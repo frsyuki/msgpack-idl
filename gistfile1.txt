@@ -98,7 +98,7 @@ typedef<V> map<string,V> GenericStringMap;
 message<V> GenericExample {
 	1: V f1
 	2: list<V> f2
-	3: GenericExample<V> f3
+	3: GenericStringMap<V> f3
 }
 
 
@@ -109,7 +109,7 @@ message TypeSpecExample {
 typespec cpp TypeSpecExample.f1 std::vector<std::string>
 
 typespec cpp PropertyMap std::tr1::unordered_map<std::string,std::string>
-typespec cpp GenericStringMap<V> std::vector<V>
+typespec cpp GenericStringMap<V> std::unordered_map<string,V>
 
 
 exception BasicExceptionExample {
@@ -165,8 +165,6 @@ service VersionServiceExample {
 	void func1:1(1: string key, 2: optional string? value)
 	uint32? func1:2(1: string key, 2: optional string? value)
 	void func2:0(1: string key)
-	void func2:1(1: string key, 2: optional string? value)
-	uint32? func2:2(1: string key, 2: optional string? value)
 }
 
 
