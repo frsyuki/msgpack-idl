@@ -101,6 +101,9 @@ message<V> GenericExample {
 	3: GenericStringMap<V> f3
 }
 
+typedef GenericExample<string> GenericExampleSpecific1
+typedef GenericExample<bool> GenericExampleSpecific2
+
 
 message TypeSpecExample {
 	1: list<string> f1
