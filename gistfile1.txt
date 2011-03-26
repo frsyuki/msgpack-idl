@@ -153,8 +153,8 @@ service BasicServiceExample {
 
 service OptionalServiceExample {
 	string func1(1: string key, 2: string value)
-	string func3(1: string key, 2: optional string value)
-	string func2(1: string? key, 2: optional string? value)
+	string func2(1: string key, 2: optional string value)
+	string func3(1: string? key, 2: optional string? value)
 	string? func4(1: string key, 2: string value)
 }
 
@@ -163,11 +163,54 @@ service ExceptionServiceExample {
 	void func2() throws BasicExceptionExample
 }
 
+service SubServiceExample < BasicExceptionExample {
+	! string func1(1: string key, 2: string value)  // override
+	- string func1(1: string key, 2: string value)  // delete
+	+ string func6()  // add
+	string func6()  // add
+}
+
+// バージョニング案1（関数ごとのバージョン）
 service VersionServiceExample {
 	void func1(1: string key)   // version 0
 	void func1:1(1: string key, 2: optional string? value)
 	uint32? func1:2(1: string key, 2: optional string? value)
 	void func2:0(1: string key)
+	string func3()
+	string func3:1(1: optional int32 flags)
+}
+
+// バージョニング案2（関数セットごとのバージョン）
+service VersionServiceExample {
+	void func1(1: string key)
+	void func2(1: string key)
+
+1:
+	! void func1(1: string key, 2: optional string? value)
+	+ string func3()
+
+2:
+	! uint32? func1(1: string key, 2: optional string? value)
+	! string func3(1: optional int32 flags)
+}
+
+
+// RPCスコープの設定
+scope MyApplication {
+	OptionalServiceExample scope1
+		// func1:scope1
+		// func2:scope1
+
+	ExceptionServiceExample scope2
+		// func1:scope2
+		// func2:scope2
+
+	VersionServiceExample scope3
+		// func1:scope2
+		// func2:scope2
+		// func1:scope2:1
+		// func2:scope2:1
+		// func3:scope3:1
 }
 
 
