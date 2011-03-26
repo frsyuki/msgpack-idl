@@ -170,6 +170,7 @@ service SubServiceExample < BasicExceptionExample {
 	string func7()  // add
 }
 
+
 // バージョニング案1（関数ごとのバージョン）
 service VersionServiceExample {
 	void func1(1: string key)   // version 0
@@ -178,6 +179,22 @@ service VersionServiceExample {
 	void func2:0(1: string key)
 	string func3()
 	string func3:1(1: optional int32 flags)
+
+	// func1    // func1:2
+	// func1:0  // func1:0
+	// func1:1  // func1:1
+	// func1:2  // func1:2
+	// func1:3  // エラー (VersionMismatch)
+	// func2    // func2:0
+	// func2:0  // func2:0
+	// func2:1  // エラー (VersionMismatch)
+	// func2:2  // エラー (VersionMismatch)
+	// func2:3  // エラー (VersionMismatch)
+	// func3    // func3:1
+	// func3:0  // func3:0
+	// func3:1  // func3:1
+	// func3:2  // エラー (VersionMismatch)
+	// func3:3  // エラー (VersionMismatch)
 }
 
 // バージョニング案2（関数セットごとのバージョン）
@@ -191,7 +208,24 @@ service VersionServiceExample {
 
 2:
 	! uint32? func1(1: string key, 2: optional string? value)
+	- void func2(1: string key)
 	! string func3(1: optional int32 flags)
+
+	// func1    // func1:2
+	// func1:0  // func1:0
+	// func1:1  // func1:1
+	// func1:2  // func1:2
+	// func1:3  // エラー (VersionMismatch)
+	// func2    // func2:0
+	// func2:0  // func2:0
+	// func2:1  // func2:0
+	// func2:2  // エラー (VersionMismatch)
+	// func2:3  // エラー (VersionMismatch)
+	// func3    // func3:2
+	// func3:0  // エラー (NoMethodFound)
+	// func3:1  // func3:2
+	// func3:2  // func3:2
+	// func3:3  // エラー (VersionMismatch)
 }
 
 
@@ -207,11 +241,13 @@ application MyApplication {
 		// func2:scope2
 
 	VersionServiceExample scope3
-		// func1:scope2
-		// func2:scope2
-		// func1:scope2:1
-		// func2:scope2:1
+		// func1:scope3
+		// func2:scope3
+		// func3:scope3
+		// func1:scope3:1
+		// func2:scope3:1
 		// func3:scope3:1
+		// ...
 }
 
 
