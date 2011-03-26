@@ -195,8 +195,7 @@ service VersionServiceExample {
 }
 
 
-// RPCスコープの設定
-scope MyApplication {
+application MyApplication {
 	OptionalServiceExample scope1
 		// func1:scope1
 		// func2:scope1
