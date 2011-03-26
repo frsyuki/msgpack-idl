@@ -167,7 +167,7 @@ service SubServiceExample < BasicExceptionExample {
 	! string func1(1: string key, 2: string value)  // override
 	- string func1(1: string key, 2: string value)  // delete
 	+ string func6()  // add
-	string func6()  // add
+	string func7()  // add
 }
 
 // バージョニング案1（関数ごとのバージョン）
@@ -196,7 +196,9 @@ service VersionServiceExample {
 
 
 application MyApplication {
-	OptionalServiceExample scope1
+	OptionalServiceExample scope1 default
+		// func1
+		// func2
 		// func1:scope1
 		// func2:scope1
 
