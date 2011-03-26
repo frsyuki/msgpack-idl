@@ -49,11 +49,20 @@ message NullableExample {
 message EmptyExample {
 }
 
+
+enum EnumExample {
+	1: RED
+	2: GREEN
+	3: BLUE
+}
+
+
 typedef map<string,string> PropertyMap;
 
 message TypedefExampel {
 	1: PropertyMap f1
 }
+
 
 typedef<V> map<string,V> GenericStringMap;
 
@@ -62,6 +71,7 @@ message<V> GenericExample {
 	2: list<V> f2
 	3: GenericExample<V> f3
 }
+
 
 message TypeSpecExample {
 	1: list<string> f1
@@ -99,6 +109,7 @@ exception SuperExceptionExample {
 exception SubExceptionExample3 < SuperExceptionExample {
 	3: raw key
 }
+
 
 service BasicServiceExample {
 	string func1(1: string key, 2: string value)
