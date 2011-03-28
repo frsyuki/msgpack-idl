@@ -19,7 +19,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:message) {
-		k_message >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> message_body >> k_rwing
+		k_message >> type_param_decl.maybe >> class_name >> lt_extend_class.maybe >> k_lwing >> message_body >> k_rwing
 	}
 
 	rule(:message_body) {
@@ -27,7 +27,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:exception) {
-		k_exception >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> exception_body >> k_rwing
+		k_exception >> type_param_decl.maybe >> class_name >> lt_extend_class.maybe >> k_lwing >> exception_body >> k_rwing
 	}
 
 	rule(:exception_body) {
@@ -61,11 +61,11 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:field_type) {
-		generic_type
+		generic_type >> k_question.maybe
 	}
 
 	rule(:return_type) {
-		generic_type
+		field_type
 	}
 
 	rule(:generic_type) {
@@ -86,7 +86,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:lang_type_param) {
-		k_lpoint >> (lang_generic_type >> (k_comma >> lang_generic_type).repeat) >> k_rpoint
+		k_lpoint >> (lang_type >> (k_comma >> lang_type).repeat) >> k_rpoint
 	}
 
 	rule(:lang_generic_type) {
@@ -110,7 +110,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:typedef) {
-		k_typedef >> type_param_decl.maybe >> field_type >> field_type >> eol
+		k_typedef >> type_param_decl.maybe >> field_type >> generic_type >> eol
 	}
 
 	rule(:typespec) {
@@ -158,7 +158,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:scope) {
-		field_type >> field_name >> k_default.maybe >> eol
+		generic_type >> field_name >> k_default.maybe >> eol
 	}
 
 
@@ -208,6 +208,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:namespace_name) {
+		# TODO scope
 		name
 	}
 
@@ -229,7 +230,7 @@ class Parser < Parslet::Parser
 
 	rule(:name) {
 		# terminal
-		space? >> match('[a-zA-Z_]') >> match('[a-zA-Z0-9_]').repeat >> boundary
+		space? >> match('[a-zA-Z]') >> match('[a-zA-Z0-9_]').repeat >> boundary
 	}
 
 
@@ -316,6 +317,7 @@ class Parser < Parslet::Parser
 	separator('!', :k_bang)
 	separator('-', :k_minus)
 	separator('+', :k_plus)
+	separator('?', :k_question)
 end
 
 
@@ -326,78 +328,6 @@ parser = MessageSpec::Parser.new
 #require 'parslet/export'
 #puts parser.to_treetop
 
-result = parser.parse_with_debug <<'EOF'
-namespace cpp test
-message Test {
-	1: int test
-	2: required int test
-	3: optional int test
-	4: optional int test = 1
-}
-
-message Test<T,V> < Extend {
-}
-
-message Test2 < Test<string,int> {
-}
-
-exception Test {
-	1: int test
-	2: required int test
-	3: optional int test
-	4: optional int test = 1
-	5: map<string,V> test
-}
-
-enum EnumTest {
-	1: RED
-	2: BLUE
-}
-
-const int NUM = 1
-const bool test = false
-const list<int> test = []
-const list<int> test = [1]
-const list<int> test = [1,2,3]
-const map<int> test = {}
-const map<int> test = {1:1}
-const map<int> test = {"a":INT_MAX}
-
-typespec cpp int test
-typespec cpp list<string> std::vector<string>
-typespec<V> cpp list<V> std::vector<V>
-
-typedef map<string,int> aaa
-typedef<V> map<string,V> smap
-typedef smap<int> bbb
-
-service Test {
-	void test()
-	void test(1: int a)
-	void test(1: int b, 2: optional int c)
-	list<string> test()
-	void test() throws Test
-	void test() throws Test, Test2
-}
-
-service Test2 < X {
-0:
-	! void test() # comment
-                # comment
-1:
-	+ void test() // comment
-2:
-	- void /*comment*/ test()
-	void test()
-}
-
-server X {
-	Test scope1 default
-	Test scope2
-	Test<int> scope3
-}
-EOF
-
-
-p result
+src = File.read(File.dirname(__FILE__)+'/memo.msgspec')
+result = parser.parse_with_debug(src)
 

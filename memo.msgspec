@@ -1,7 +1,7 @@
 
 // example1.msgspec
 
-namespace com.example
+#namespace com.example
 namespace cpp example
 namespace ruby Example
 
@@ -112,7 +112,7 @@ message TypeSpecExample {
 typespec cpp TypeSpecExample.f1 std::vector<std::string>
 
 typespec cpp PropertyMap std::tr1::unordered_map<std::string,std::string>
-typespec cpp GenericStringMap<V> std::unordered_map<string,V>
+typespec<V> cpp GenericStringMap<V> std::unordered_map<string,V>
 
 
 exception BasicExceptionExample {
@@ -124,6 +124,7 @@ exception SuperExceptionExample {
 	1: string message
 	2: int32 code
 
+	/*
 	exception SubExceptionExample1 {
 		3: string key
 		4: raw value
@@ -136,6 +137,7 @@ exception SuperExceptionExample {
 			4: string value
 		}
 	}
+	*/
 }
 
 exception SubExceptionExample3 < SuperExceptionExample {
@@ -172,6 +174,7 @@ service SubServiceExample < BasicExceptionExample {
 
 
 // バージョニング案1（関数ごとのバージョン）
+/*
 service VersionServiceExample {
 	void func1(1: string key)   // version 0
 	void func1:1(1: string key, 2: optional string? value)
@@ -196,6 +199,7 @@ service VersionServiceExample {
 	// func3:2  // エラー (VersionMismatch)
 	// func3:3  // エラー (VersionMismatch)
 }
+*/
 
 // バージョニング案2（関数セットごとのバージョン）
 service VersionServiceExample {
@@ -253,4 +257,4 @@ server MyApplication {
 
 // example1-impl.msgspec
 
-include example1.msgspec
+#include example1.msgspec
