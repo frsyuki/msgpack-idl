@@ -229,7 +229,7 @@ service VersionServiceExample {
 }
 
 
-application MyApplication {
+server MyApplication {
 	OptionalServiceExample scope1 default
 		// func1
 		// func2

@@ -11,8 +11,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:definition) {
-		#| server
-		namespace | message | enum | exception | const | typedef | typespec | service
+		namespace | message | enum | exception | const | typedef | typespec | service | server
 	}
 
 	rule(:namespace) {
@@ -117,11 +116,15 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:func) {
-		func_modifier.maybe >> return_type >> func_name >> k_lparen >> func_args >> k_rparen >> eol
+		func_modifier.maybe >> return_type >> func_name >> k_lparen >> func_args >> k_rparen >> throws_classes.maybe >> eol
 	}
 
 	rule(:func_args) {
 		(field_element >> (k_comma >> field_element).repeat).maybe
+	}
+
+	rule(:throws_classes) {
+		k_throws >> generic_type >> (k_comma >> generic_type).repeat
 	}
 
 	rule(:version_label) {
@@ -134,7 +137,15 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:server) {
-		space? # TODO
+		k_server >> class_name >> k_lwing >> server_body >> k_rwing
+	}
+
+	rule(:server_body) {
+		scope.repeat
+	}
+
+	rule(:scope) {
+		field_type >> field_name >> k_default.maybe >> eol
 	}
 
 
@@ -252,6 +263,7 @@ class Parser < Parslet::Parser
 	keyword('optional')
 	keyword('required')
 	keyword('throws')
+	keyword('default')
 	keyword('true')
 	keyword('false')
 	keyword('void')
@@ -324,14 +336,24 @@ service Test {
 	void test(1: int a)
 	void test(1: int b, 2: optional int c)
 	list<string> test()
+	void test() throws Test
+	void test() throws Test, Test2
 }
 
 service Test2 < X {
+0:
 	! void test()
 1:
 	+ void test()
 2:
 	- void test()
+	void test()
+}
+
+server X {
+	Test scope1 default
+	Test scope2
+	Test<int> scope3
 }
 EOF
 
