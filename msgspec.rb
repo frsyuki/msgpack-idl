@@ -11,8 +11,8 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:definition) {
-		#namespace | message | enum | exception | const | typedef | typespec | service | server
-		namespace | message | enum | exception | const | typedef | typespec
+		#| server
+		namespace | message | enum | exception | const | typedef | typespec | service
 	}
 
 	rule(:namespace) {
@@ -20,24 +20,37 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:message) {
-		k_message >> class_name >> lt_extend_class.maybe >> k_lwing >> field.repeat >> k_rwing
+		k_message >> generic_type >> lt_extend_class.maybe >> k_lwing >> message_body >> k_rwing
+	}
+
+	rule(:message_body) {
+		field.repeat
 	}
 
 	rule(:exception) {
-		k_exception >> class_name >> lt_extend_class.maybe >> k_lwing >> field.repeat >> k_rwing
+		k_exception >> generic_type >> lt_extend_class.maybe >> k_lwing >> exception_body >> k_rwing
+	}
+
+	rule(:exception_body) {
+		# TODO nested exception?
+		field.repeat
 	}
 
 	rule(:lt_extend_class) {
-		k_lpoint >> class_name
+		k_lpoint >> generic_type
 	}
 
 	rule(:field) {
-		field_id >> field_modifier.maybe >> field_type >> field_name >> eq_default_value.maybe >> eol
+		field_element >> eol
+	}
+
+	rule(:field_element) {
+		field_id >> field_modifier.maybe >> field_type >> field_name >> eq_default_value.maybe
 	}
 
 	rule(:field_id) {
 		# terminal
-		space? >> (str('0') | (match('[1-9]') >> match('[0-9]').repeat)) >> str(':') >> boundary
+		space? >> (str('0') | (match('[1-9]') >> match('[0-9]').repeat)) >> str(':') >> str(':').absnt?
 	}
 
 	rule(:field_modifier) {
@@ -52,7 +65,16 @@ class Parser < Parslet::Parser
 		name # TODO
 	}
 
+	rule(:return_type) {
+		name # TODO
+	}
+
 	rule(:generic_type) {
+		# TODO generics
+		name # TODO
+	}
+
+	rule(:lang_type) {
 		name # TODO
 	}
 
@@ -75,13 +97,30 @@ class Parser < Parslet::Parser
 
 	rule(:typespec) {
 		k_typespec >> lang_name >> (
-			(class_name >> str('.') >> field_name) |
+			(generic_type >> str('.') >> field_name) |
 			generic_type
-		) >> field_type >> eol
+		) >> lang_type >> eol
 	}
 
 	rule(:service) {
-		space? # TODO
+		k_service >> generic_type >> lt_extend_class.maybe >> k_lwing >> service_body >> k_rwing
+	}
+
+	rule(:service_body) {
+		# TODO versioning
+		func.repeat
+	}
+
+	rule(:func) {
+		func_modifier.maybe >> return_type >> func_name >> k_lparen >> func_args >> k_rparen >> eol
+	}
+
+	rule(:func_args) {
+		(field_element >> (k_comma >> field_element).repeat).maybe
+	}
+
+	rule(:func_modifier) {
+		k_bang | k_minus | k_plus
 	}
 
 	rule(:server) {
@@ -111,19 +150,21 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:literal_str) {
-		space? >> str('"') >>
-			(str('\\') >> any | str('"').absnt? >> any ).repeat >>
-		str('"') >> boundary
+		(
+			space? >> str('"') >>
+				(str('\\') >> any | str('"').absnt? >> any ).repeat >>
+			str('"')
+		).repeat(1)# >> boundary
 	}
 
 	rule(:literal_array) {
 		# TODO
-		#space? >> k_lbracket >> k_rbracket >> boundary
+		#space? >> k_lbracket >> k_rbracket
 	}
 
 	rule(:literal_map) {
 		# TODO
-		#space? >> k_lwing >> k_rwing >> boundary
+		#space? >> k_lwing >> k_rwing
 	}
 
 
@@ -147,6 +188,10 @@ class Parser < Parslet::Parser
 		name
 	}
 
+	rule(:func_name) {
+		name
+	}
+
 	rule(:name) {
 		# terminal
 		space? >> match('[a-zA-Z_]') >> match('[a-zA-Z0-9_]').repeat >> boundary
@@ -162,8 +207,9 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:boundary) {
-		# TODO name_char.absnt?
-		match('[ \r\n\t\;\:\(\)\[\]\*\<\>\{\}\=\@\"\'\#\/\!\?]').prsnt?
+		#match('[ \r\n\t\;\:\(\)\[\]\*\<\>\{\}\=\@\"\'\#\/\!\?]').prsnt?
+		#name.absnt?
+		match('[a-zA-Z_]').absnt?
 	}
 
 	rule(:eol) {
@@ -179,7 +225,7 @@ class Parser < Parslet::Parser
 
 	def self.separator(string, name="k_"+str)
 		rule(name.to_sym) {
-			space? >> str(string) >> boundary
+			space? >> str(string)
 		}
 	end
 
@@ -213,6 +259,9 @@ class Parser < Parslet::Parser
 	separator('>', :k_rpoint)
 	separator('[', :k_lbracket)
 	separator(']', :k_rbracket)
+	separator('!', :k_bang)
+	separator('-', :k_minus)
+	separator('+', :k_plus)
 end
 
 
@@ -251,6 +300,18 @@ const int NUM = 1
 const bool test = false
 
 typespec cpp int test
+
+service Test {
+	void test()
+	void test(1: int a)
+	void test(1: int b, 2: optional int c)
+}
+
+service Test2 < X {
+	! void test()
+	+ void test()
+	- void test()
+}
 EOF
 
 p result
