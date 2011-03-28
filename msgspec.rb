@@ -80,8 +80,21 @@ class Parser < Parslet::Parser
 		k_lpoint >> (class_name >> (k_comma >> class_name).repeat) >> k_rpoint
 	}
 
+
+	rule(:lang_scope_delimiter) {
+		str('::') | str('.')
+	}
+
+	rule(:lang_type_param) {
+		k_lpoint >> (lang_generic_type >> (k_comma >> lang_generic_type).repeat) >> k_rpoint
+	}
+
+	rule(:lang_generic_type) {
+		name >> lang_type_param.maybe
+	}
+
 	rule(:lang_type) {
-		name # TODO
+		lang_generic_type >> (lang_scope_delimiter >> lang_generic_type).repeat
 	}
 
 	rule(:enum) {
@@ -101,7 +114,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:typespec) {
-		k_typespec >> lang_name >> (
+		k_typespec >> type_param_decl.maybe >> lang_name >> (
 			(generic_type >> str('.') >> field_name) |
 			generic_type
 		) >> lang_type >> eol
@@ -351,6 +364,8 @@ const map<int> test = {1:1}
 const map<int> test = {"a":INT_MAX}
 
 typespec cpp int test
+typespec cpp list<string> std::vector<string>
+typespec<V> cpp list<V> std::vector<V>
 
 typedef map<string,int> aaa
 typedef<V> map<string,V> smap
