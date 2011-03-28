@@ -12,7 +12,7 @@ class Parser < Parslet::Parser
 
 	rule(:definition) {
 		#namespace | message | enum | exception | const | typedef | typespec | service | server
-		namespace | message | enum | exception
+		namespace | message | enum | exception | const | typedef | typespec
 	}
 
 	rule(:namespace) {
@@ -47,6 +47,10 @@ class Parser < Parslet::Parser
 		name # TODO
 	}
 
+	rule(:generic_type) {
+		name # TODO
+	}
+
 	rule(:enum) {
 		k_enum >> message_name >> k_lwing >> enum_field.repeat >> k_rwing
 	}
@@ -56,16 +60,19 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:const) {
-		space? # TODO
+		k_const >> field_type >> const_name >> k_equal >> literal >> eol
 	}
 
 	rule(:typedef) {
 		# TODO generics
-		k_typedef >> field_type >> filed_type >> eol
+		k_typedef >> field_type >> field_type >> eol
 	}
 
 	rule(:typespec) {
-		space? # TODO
+		k_typespec >> lang_name >> (
+			(message_name >> str('.') >> field_name) |
+			generic_type
+		) >> field_type >> eol
 	}
 
 	rule(:service) {
@@ -77,11 +84,52 @@ class Parser < Parslet::Parser
 	}
 
 
+	rule(:literal) {
+		literal_bool | literal_const | literal_int | literal_float | literal_str
+		# | literal_array | literal_map
+	}
+
+	rule(:literal_const) {
+		const_name
+	}
+
+	rule(:literal_bool) {
+		k_true | k_false
+	}
+
+	rule(:literal_int) {
+		space? >> (str('0') | (match('[1-9]') >> match('[0-9]').repeat)) >> boundary
+	}
+
+	rule(:literal_float) {
+		space? >> (str('0') | (match('[1-9]') >> match('[0-9]').repeat)) >> str('.') >> match('[0-9]').repeat(1) >> boundary
+	}
+
+	rule(:literal_str) {
+		space? >> str('"') >>
+			(str('\\') >> any | str('"').absnt? >> any ).repeat >>
+		str('"') >> boundary
+	}
+
+	rule(:literal_array) {
+		# TODO
+		#space? >> k_lbracket >> k_rbracket >> boundary
+	}
+
+	rule(:literal_map) {
+		#space? >> k_lwing >> k_rwing >> boundary
+	}
+
+
 	rule(:lang_name) {
 		name
 	}
 
 	rule(:namespace_name) {
+		name
+	}
+
+	rule(:const_name) {
 		name
 	}
 
@@ -166,6 +214,8 @@ end
 
 
 parser = MessageSpec::Parser.new
+#require 'parslet/export'
+#puts parser.to_treetop
 
 result = parser.parse_with_debug <<'EOF'
 namespace cpp test
@@ -187,6 +237,11 @@ enum EnumTest {
 	1: RED
 	2: BLUE
 }
+
+const int NUM = 1
+const bool test = false
+
+typespec cpp int test
 EOF
 
 p result
