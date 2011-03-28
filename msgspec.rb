@@ -7,58 +7,184 @@ class Parser < Parslet::Parser
 	root :expression
 
 	rule(:expression) {
-		space? >> definition.repeat >> space?
+		space? >> definition.repeat.as(:definitions) >> space?
 	}
 
 	rule(:definition) {
-		namespace | message | enum | exception | const | typedef | typespec | service | server
+		namespace.as(:namespace) |
+		message.as(:message) |
+		enum.as(:enum) |
+		exception.as(:exception) |
+		const.as(:const) |
+		typedef.as(:typedef) |
+		typespec | #.as(:typespec)
+		service | #.as(:service)
+		server #.as(:server)
 	}
+
 
 	rule(:namespace) {
-		k_namespace >> ((lang_name >> namespace_name) | namespace_name) >> eol
+		k_namespace >> (
+			(lang_name.as(:lang) >> namespace_name.as(:space)) |
+			namespace_name.as(:space)
+		) >> eol
 	}
+
 
 	rule(:message) {
-		k_message >> type_param_decl.maybe >> class_name >> lt_extend_class.maybe >> k_lwing >> message_body >> k_rwing
-	}
-
-	rule(:message_body) {
-		field.repeat
+		k_message >>
+			type_param_decl.maybe.as(:type_params) >>
+			class_name.as(:name) >>
+			lt_extend_class.maybe.as(:super_class) >>
+		k_lwing >>
+			field.repeat.as(:body) >>
+		k_rwing
 	}
 
 	rule(:exception) {
-		k_exception >> type_param_decl.maybe >> class_name >> lt_extend_class.maybe >> k_lwing >> exception_body >> k_rwing
-	}
-
-	rule(:exception_body) {
-		# TODO nested exception?
-		field.repeat
+		k_exception >>
+			type_param_decl.maybe.as(:type_params) >>
+			class_name.as(:name) >>
+			lt_extend_class.maybe.as(:super_class) >>
+		k_lwing >>
+			field.repeat.as(:body) >>  # TODO nested exception?
+		k_rwing
 	}
 
 	rule(:lt_extend_class) {
-		k_lpoint >> generic_type
+		k_lpoint >> generic_type.as(:direct)
 	}
 
+
 	rule(:field) {
-		field_element >> eol
+		field_element.as(:field) >> eol
 	}
 
 	rule(:field_element) {
-		field_id >> field_modifier.maybe >> field_type >> field_name >> eq_default_value.maybe
+		field_id.as(:id) >>
+		field_modifier.maybe.as(:modifier) >>
+		field_type.as(:type) >>
+		field_name.as(:name) >>
+		eq_default_value.maybe.as(:default)
 	}
 
 	rule(:field_id) {
 		# terminal
-		space? >> (str('0') | (match('[1-9]') >> match('[0-9]').repeat)) >> str(':') >> str(':').absnt?
+		space? >>
+			(str('0') | (match('[1-9]') >> match('[0-9]').repeat)).as(:val_int) >>
+		str(':') >> str(':').absnt?
 	}
 
 	rule(:field_modifier) {
-		k_optional | k_required
+		k_optional.as(:val_optional) | k_required.as(:val_required)
 	}
 
 	rule(:eq_default_value) {
-		k_equal >> literal
+		k_equal >> literal.as(:direct)
 	}
+
+
+	rule(:enum) {
+		k_enum >>
+			class_name.as(:name) >>
+		k_lwing >>
+			enum_field.repeat.as(:body) >>
+		k_rwing
+	}
+
+	rule(:enum_field) {
+		enum_field_element.as(:enum_field) >> eol
+	}
+
+	rule(:enum_field_element) {
+		field_id.as(:id) >> field_name.as(:name)
+	}
+
+
+	rule(:typedef) {
+		k_typedef >>
+			type_param_decl.maybe.as(:type_params) >>
+			field_type.as(:type) >>
+			generic_type.as(:name) >>
+		eol
+	}
+
+
+	rule(:const) {
+		k_const >>
+			field_type.as(:type) >>
+			const_name.as(:name) >>
+			k_equal >> literal.as(:value) >>
+		eol
+	}
+
+
+	rule(:typespec) {
+		k_typespec >> type_param_decl.maybe >> lang_name >> (
+			(generic_type >> str('.') >> field_name) |
+			generic_type
+		) >> lang_type >> eol
+	}
+
+	rule(:lang_scope_delimiter) {
+		str('::') | str('.')
+	}
+
+	rule(:lang_type_param) {
+		k_lpoint >> (lang_type >> (k_comma >> lang_type).repeat) >> k_rpoint
+	}
+
+	rule(:lang_generic_type) {
+		name >> lang_type_param.maybe
+	}
+
+	rule(:lang_type) {
+		lang_generic_type >> (lang_scope_delimiter >> lang_generic_type).repeat
+	}
+
+
+	rule(:service) {
+		k_service >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> service_body >> k_rwing
+	}
+
+	rule(:service_body) {
+		(func | version_label).repeat
+	}
+
+	rule(:func) {
+		func_modifier.maybe >> return_type >> func_name >> k_lparen >> func_args >> k_rparen >> throws_classes.maybe >> eol
+	}
+
+	rule(:func_modifier) {
+		k_bang | k_minus | k_plus
+	}
+
+	rule(:func_args) {
+		(field_element >> (k_comma >> field_element).repeat).maybe
+	}
+
+	rule(:throws_classes) {
+		k_throws >> generic_type >> (k_comma >> generic_type).repeat
+	}
+
+	rule(:version_label) {
+		# terminal
+		field_id
+	}
+
+
+	rule(:server) {
+		k_server >> class_name >> k_lwing >> server_body >> k_rwing
+	}
+
+	rule(:server_body) {
+		scope.repeat
+	}
+
+	rule(:scope) {
+		generic_type >> field_name >> k_default.maybe >> eol
+	}
+
 
 	rule(:field_type) {
 		generic_type >> k_question.maybe
@@ -78,87 +204,6 @@ class Parser < Parslet::Parser
 
 	rule(:type_param_decl) {
 		k_lpoint >> (class_name >> (k_comma >> class_name).repeat) >> k_rpoint
-	}
-
-
-	rule(:lang_scope_delimiter) {
-		str('::') | str('.')
-	}
-
-	rule(:lang_type_param) {
-		k_lpoint >> (lang_type >> (k_comma >> lang_type).repeat) >> k_rpoint
-	}
-
-	rule(:lang_generic_type) {
-		name >> lang_type_param.maybe
-	}
-
-	rule(:lang_type) {
-		lang_generic_type >> (lang_scope_delimiter >> lang_generic_type).repeat
-	}
-
-	rule(:enum) {
-		k_enum >> class_name >> k_lwing >> enum_field.repeat >> k_rwing
-	}
-
-	rule(:enum_field) {
-		field_id >> field_name >> eol
-	}
-
-	rule(:const) {
-		k_const >> field_type >> const_name >> k_equal >> literal >> eol
-	}
-
-	rule(:typedef) {
-		k_typedef >> type_param_decl.maybe >> field_type >> generic_type >> eol
-	}
-
-	rule(:typespec) {
-		k_typespec >> type_param_decl.maybe >> lang_name >> (
-			(generic_type >> str('.') >> field_name) |
-			generic_type
-		) >> lang_type >> eol
-	}
-
-	rule(:service) {
-		k_service >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> service_body >> k_rwing
-	}
-
-	rule(:service_body) {
-		(func | version_label).repeat
-	}
-
-	rule(:func) {
-		func_modifier.maybe >> return_type >> func_name >> k_lparen >> func_args >> k_rparen >> throws_classes.maybe >> eol
-	}
-
-	rule(:func_args) {
-		(field_element >> (k_comma >> field_element).repeat).maybe
-	}
-
-	rule(:throws_classes) {
-		k_throws >> generic_type >> (k_comma >> generic_type).repeat
-	}
-
-	rule(:version_label) {
-		# terminal
-		field_id
-	}
-
-	rule(:func_modifier) {
-		k_bang | k_minus | k_plus
-	}
-
-	rule(:server) {
-		k_server >> class_name >> k_lwing >> server_body >> k_rwing
-	}
-
-	rule(:server_body) {
-		scope.repeat
-	}
-
-	rule(:scope) {
-		generic_type >> field_name >> k_default.maybe >> eol
 	}
 
 
@@ -229,11 +274,11 @@ class Parser < Parslet::Parser
 
 	rule(:name) {
 		# terminal
-		space? >> match('[a-zA-Z]') >> match('[a-zA-Z0-9_]').repeat >> boundary
+		space? >> (match('[a-zA-Z]') >> match('[a-zA-Z0-9_]').repeat) >> boundary
 	}
 
 
-	rule(:inner_comment) {
+	rule(:inline_comment) {
 		str('/*') >> (
 			(str('*') >> str('/').absnt?) |
 			(str('*').absnt? >> any)
@@ -247,8 +292,9 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:comment) {
-		inner_comment | line_comment
+		inline_comment | line_comment
 	}
+
 
 	rule(:space) {
 		(match('[ \r\n\t]') | comment).repeat(1)
@@ -258,15 +304,15 @@ class Parser < Parslet::Parser
 		space.maybe
 	}
 
+	rule(:eol) {
+		match('[ \t]').repeat >>
+			(match('[ \t;\r\n]') | line_comment).repeat(1)
+	}
+
 	rule(:boundary) {
 		#match('[ \r\n\t\;\:\(\)\[\]\*\<\>\{\}\=\@\"\'\#\/\!\?]').prsnt?
 		#name.absnt?
 		match('[a-zA-Z_]').absnt?
-	}
-
-	rule(:eol) {
-		match('[ \t]').repeat >>
-			(match('[ \t;\r\n]') | line_comment).repeat(1)
 	}
 
 
@@ -321,13 +367,145 @@ class Parser < Parslet::Parser
 end
 
 
+module AST
+	Namespace = Struct.new(:space, :lang)
+	Message = Struct.new(:name, :super_class, :body)
+	GenericMessage = Struct.new(:name, :super_class, :body, :type_params)
+	Exception = Struct.new(:name, :super_class, :body)
+	GenericException = Struct.new(:name, :super_class, :body, :type_params)
+	Field = Struct.new(:id, :type, :modifier, :name, :default)
+	Enum = Struct.new(:name, :body)
+	EnumField = Struct.new(:id, :name)
+	Typedef = Struct.new(:type, :name)
+	GenericTypedef = Struct.new(:type, :name, :type_params)
+	Const = Struct.new(:type, :name, :value)
+
+	OPTIONAL = 0
+	REQUIRED = 0
+end
+
+
+class Visitor < Parslet::Transform
+	rule(:definitions => simple(:ds)) {
+		ds
+	}
+
+
+	rule(:namespace => {
+			:lang => simple(:l),
+			:space => simple(:s)}) {
+		AST::Namespace.new(s, l)
+	}
+
+	rule(:namespace => {
+			:space => simple(:s)}) {
+		AST::Namespace.new(s, nil)
+	}
+
+
+	rule(:message => {
+			:type_params => simple(:tp),
+			:name => simple(:n),
+			:super_class => simple(:sc),
+			:body => simple(:b)}) {
+		if tp
+			AST::GenericMessage.new(n, sc, b, tp)
+		else
+			AST::Message.new(n, sc, b)
+		end
+	}
+
+	rule(:exception => {
+			:type_params => simple(:tp),
+			:name => simple(:n),
+			:super_class => simple(:sc),
+			:body => simple(:b)}) {
+		if tp
+			AST::GenericException.new(n, sc, b, tp)
+		else
+			AST::Exception.new(n, sc, b)
+		end
+	}
+
+
+	rule(:field => {
+			:id => simple(:i),
+			:modifier => simple(:m),
+			:type => simple(:t),
+			:name => simple(:n),
+			:default => simple(:d)}) {
+		AST::Field.new(i, t, m, n, d)
+	}
+
+
+	rule(:enum => {
+			:name => simple(:n),
+			:body => simple(:b)}) {
+		AST::Enum.new(n, b)
+	}
+
+	rule(:enum_field => {
+			:id => simple(:i),
+			:name => simple(:n)}) {
+		AST::EnumField.new(i, n)
+	}
+
+
+	rule(:typedef => {
+			:type_params => simple(:tp),
+			:type => simple(:t),
+			:name => simple(:n)}) {
+		if tp
+			AST::GenericTypedef.new(t, n, tp)
+		else
+			AST::Typedef.new(t, n)
+		end
+	}
+
+
+	rule(:const => {
+			:type => simple(:t),
+			:name => simple(:n),
+			:value => simple(:v)}) {
+		AST::Const.new(t, n, v)
+	}
+
+
+	rule(:val_optional => simple(:x)) {
+		AST::OPTIONAL
+	}
+
+	rule(:val_required => simple(:x)) {
+		AST::REQUIRED
+	}
+
+	rule(:val_int => simple(:i)) {
+		i.to_i
+	}
+
+	rule(:array => sequence(:r)) {
+		r
+	}
+
+	rule(:direct => simple(:d)) {
+		d
+	}
+end
+
+
 end
 
 
 parser = MessageSpec::Parser.new
+visitor = MessageSpec::Visitor.new
+
 #require 'parslet/export'
 #puts parser.to_treetop
 
 src = File.read(File.dirname(__FILE__)+'/memo.msgspec')
 result = parser.parse_with_debug(src)
+
+require 'pp'
+pp result
+pp visitor.apply(result)
 
