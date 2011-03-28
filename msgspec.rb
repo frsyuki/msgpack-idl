@@ -208,8 +208,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:namespace_name) {
-		# TODO scope
-		name
+		name >> (k_dot >> name).repeat
 	}
 
 	rule(:const_name) {
@@ -318,6 +317,7 @@ class Parser < Parslet::Parser
 	separator('-', :k_minus)
 	separator('+', :k_plus)
 	separator('?', :k_question)
+	separator('.', :k_dot)
 end
 
 

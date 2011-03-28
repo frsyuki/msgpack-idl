@@ -1,7 +1,7 @@
 
 // example1.msgspec
 
-#namespace com.example
+namespace com.example
 namespace cpp example
 namespace ruby Example
 
