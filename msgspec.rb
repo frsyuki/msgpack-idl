@@ -20,18 +20,19 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:message) {
-		# TODO: inheritance
-		k_message >> message_name >> k_lwing >> field.repeat >> k_rwing
+		k_message >> class_name >> lt_extend_class.maybe >> k_lwing >> field.repeat >> k_rwing
 	}
 
 	rule(:exception) {
-		# TODO: inheritance
-		k_exception >> message_name >> k_lwing >> field.repeat >> k_rwing
+		k_exception >> class_name >> lt_extend_class.maybe >> k_lwing >> field.repeat >> k_rwing
+	}
+
+	rule(:lt_extend_class) {
+		k_lpoint >> class_name
 	}
 
 	rule(:field) {
-		# TODO: default value
-		field_id >> field_modifier.maybe >> field_type >> field_name >> eol
+		field_id >> field_modifier.maybe >> field_type >> field_name >> eq_default_value.maybe >> eol
 	}
 
 	rule(:field_id) {
@@ -43,6 +44,10 @@ class Parser < Parslet::Parser
 		k_optional | k_required
 	}
 
+	rule(:eq_default_value) {
+		k_equal >> literal
+	}
+
 	rule(:field_type) {
 		name # TODO
 	}
@@ -52,7 +57,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:enum) {
-		k_enum >> message_name >> k_lwing >> enum_field.repeat >> k_rwing
+		k_enum >> class_name >> k_lwing >> enum_field.repeat >> k_rwing
 	}
 
 	rule(:enum_field) {
@@ -70,7 +75,7 @@ class Parser < Parslet::Parser
 
 	rule(:typespec) {
 		k_typespec >> lang_name >> (
-			(message_name >> str('.') >> field_name) |
+			(class_name >> str('.') >> field_name) |
 			generic_type
 		) >> field_type >> eol
 	}
@@ -117,6 +122,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:literal_map) {
+		# TODO
 		#space? >> k_lwing >> k_rwing >> boundary
 	}
 
@@ -133,7 +139,7 @@ class Parser < Parslet::Parser
 		name
 	}
 
-	rule(:message_name) {
+	rule(:class_name) {
 		name
 	}
 
@@ -223,14 +229,17 @@ message Test {
 	1: int test
 	2: required int test
 	3: optional int test
-	3: optional int test
+	4: optional int test = 1
+}
+
+message Test < Extend {
 }
 
 exception Test {
 	1: int test
 	2: required int test
 	3: optional int test
-	3: optional int test
+	4: optional int test = 1
 }
 
 enum EnumTest {
