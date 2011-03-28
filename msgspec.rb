@@ -493,8 +493,43 @@ class Visitor < Parslet::Transform
 end
 
 
+class << self
+	def print_error(parser, error)
+		last = parser.root.error_tree
+		until last.children.empty?
+			last = last.children.last
+		end
+		last_cause = last.parslet.instance_eval('@last_cause')
+		source = last_cause.source
+
+		line, column = source.line_and_column(last_cause.pos)
+
+		old_pos = source.pos
+		begin
+			source.pos = last_cause.pos - column + 1
+			line_str = source.instance_eval('@io.gets')
+		ensure
+			source.pos = old_pos
+		end
+
+		heading = /[ \t\r\n]*/.match(line_str)[0]
+
+		puts "syntax error:"
+		puts ("#{error}\n#{parser.root.error_tree}").split("\n").map {|l|
+		"  "+l+"\n"
+		}.join
+
+		puts "around line #{line} column #{heading.size}-#{column}:"
+		puts "  "+line_str
+		puts "  "+heading + '^'*(column - heading.size)
+	end
 end
 
+
+end
+
+
+require 'pp'
 
 parser = MessageSpec::Parser.new
 visitor = MessageSpec::Visitor.new
@@ -503,9 +538,16 @@ visitor = MessageSpec::Visitor.new
 #puts parser.to_treetop
 
 src = File.read(File.dirname(__FILE__)+'/memo.msgspec')
-result = parser.parse_with_debug(src)
 
-require 'pp'
+#result = parser.parse_with_debug(src)
+begin
+	result = parser.parse(src)
+rescue Parslet::ParseFailed => error
+	MessageSpec.print_error(parser, error)
+	exit 1
+end
+
+
 pp result
 pp visitor.apply(result)
 
