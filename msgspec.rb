@@ -150,8 +150,7 @@ class Parser < Parslet::Parser
 
 
 	rule(:literal) {
-		literal_bool | literal_const | literal_int | literal_float | literal_str
-		# | literal_array | literal_map
+		literal_bool | literal_const | literal_int | literal_float | literal_str | literal_array | literal_map
 	}
 
 	rule(:literal_const) {
@@ -179,13 +178,15 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:literal_array) {
-		# TODO
-		#space? >> k_lbracket >> k_rbracket
+		space? >> k_lbracket >> (literal >> (k_comma >> literal).repeat).maybe >> k_rbracket
 	}
 
 	rule(:literal_map) {
-		# TODO
-		#space? >> k_lwing >> k_rwing
+		space? >> k_lwing >> (literal_map_pair >> (k_comma >> literal_map_pair).repeat).maybe >> k_rwing
+	}
+
+	rule(:literal_map_pair) {
+		literal >> k_colon >> literal
 	}
 
 
@@ -324,6 +325,12 @@ enum EnumTest {
 
 const int NUM = 1
 const bool test = false
+const list<int> test = []
+const list<int> test = [1]
+const list<int> test = [1,2,3]
+const map<int> test = {}
+const map<int> test = {1:1}
+const map<int> test = {"a":INT_MAX}
 
 typespec cpp int test
 
