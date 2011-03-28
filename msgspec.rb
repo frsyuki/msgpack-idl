@@ -20,7 +20,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:message) {
-		k_message >> generic_type >> lt_extend_class.maybe >> k_lwing >> message_body >> k_rwing
+		k_message >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> message_body >> k_rwing
 	}
 
 	rule(:message_body) {
@@ -28,7 +28,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:exception) {
-		k_exception >> generic_type >> lt_extend_class.maybe >> k_lwing >> exception_body >> k_rwing
+		k_exception >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> exception_body >> k_rwing
 	}
 
 	rule(:exception_body) {
@@ -62,16 +62,23 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:field_type) {
-		name # TODO
+		generic_type
 	}
 
 	rule(:return_type) {
-		name # TODO
+		generic_type
 	}
 
 	rule(:generic_type) {
-		# TODO generics
-		name # TODO
+		class_name >> type_param.maybe
+	}
+
+	rule(:type_param) {
+		k_lpoint >> (generic_type >> (k_comma >> generic_type).repeat) >> k_rpoint
+	}
+
+	rule(:type_param_decl) {
+		k_lpoint >> (class_name >> (k_comma >> class_name).repeat) >> k_rpoint
 	}
 
 	rule(:lang_type) {
@@ -91,8 +98,7 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:typedef) {
-		# TODO generics
-		k_typedef >> field_type >> field_type >> eol
+		k_typedef >> type_param_decl.maybe >> field_type >> field_type >> eol
 	}
 
 	rule(:typespec) {
@@ -103,12 +109,11 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:service) {
-		k_service >> generic_type >> lt_extend_class.maybe >> k_lwing >> service_body >> k_rwing
+		k_service >> class_name >> type_param_decl.maybe >> lt_extend_class.maybe >> k_lwing >> service_body >> k_rwing
 	}
 
 	rule(:service_body) {
-		# TODO versioning
-		func.repeat
+		(func | version_label).repeat
 	}
 
 	rule(:func) {
@@ -117,6 +122,11 @@ class Parser < Parslet::Parser
 
 	rule(:func_args) {
 		(field_element >> (k_comma >> field_element).repeat).maybe
+	}
+
+	rule(:version_label) {
+		# terminal
+		field_id
 	}
 
 	rule(:func_modifier) {
@@ -281,7 +291,10 @@ message Test {
 	4: optional int test = 1
 }
 
-message Test < Extend {
+message Test<T,V> < Extend {
+}
+
+message Test2 < Test<string,int> {
 }
 
 exception Test {
@@ -289,6 +302,7 @@ exception Test {
 	2: required int test
 	3: optional int test
 	4: optional int test = 1
+	5: map<string,V> test
 }
 
 enum EnumTest {
@@ -301,15 +315,22 @@ const bool test = false
 
 typespec cpp int test
 
+typedef map<string,int> aaa
+typedef<V> map<string,V> smap
+typedef smap<int> bbb
+
 service Test {
 	void test()
 	void test(1: int a)
 	void test(1: int b, 2: optional int c)
+	list<string> test()
 }
 
 service Test2 < X {
 	! void test()
+1:
 	+ void test()
+2:
 	- void test()
 }
 EOF
