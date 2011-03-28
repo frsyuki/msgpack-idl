@@ -220,12 +220,29 @@ class Parser < Parslet::Parser
 	}
 
 
+	rule(:inner_comment) {
+		str('/*') >> (
+			(str('*') >> str('/').absnt?) |
+			(str('*').absnt? >> any)
+		).repeat >> str('*/')
+	}
+
+	rule(:line_comment) {
+		(str('//') | str('#')) >>
+			(match('[\r\n]').absnt? >> any).repeat >>
+			match('[\r\n]').repeat(1)
+	}
+
+	rule(:comment) {
+		inner_comment | line_comment
+	}
+
 	rule(:space) {
-		match('[ \r\n\t]').repeat(1)
+		(match('[ \r\n\t]') | comment).repeat(1)
 	}
 
 	rule(:space?) {
-		match('[ \r\n\t]').repeat
+		space.maybe
 	}
 
 	rule(:boundary) {
@@ -235,7 +252,8 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:eol) {
-		match('[ \t]').repeat >> match('[ \t;\r\n]').repeat(1)
+		match('[ \t]').repeat >>
+			(match('[ \t;\r\n]') | line_comment).repeat(1)
 	}
 
 
@@ -349,11 +367,12 @@ service Test {
 
 service Test2 < X {
 0:
-	! void test()
+	! void test() # comment
+                # comment
 1:
-	+ void test()
+	+ void test() // comment
 2:
-	- void test()
+	- void /*comment*/ test()
 	void test()
 }
 
@@ -363,6 +382,7 @@ server X {
 	Test<int> scope3
 }
 EOF
+
 
 p result
 
