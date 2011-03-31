@@ -169,7 +169,7 @@ class Parser < Parslet::Parser
 
 	rule(:service) {
 		k_service >>
-			class_name.as(:service_name) >>
+			service_name.as(:service_name) >>
 			#type_param_decl.maybe.as(:type_param_decl) >>
 			lt_extend_class.maybe.as(:super_class) >>
 		k_lwing >>
@@ -218,15 +218,18 @@ class Parser < Parslet::Parser
 
 
 	rule(:server) {
-		k_server >> class_name >> k_lwing >> server_body >> k_rwing
-	}
-
-	rule(:server_body) {
-		scope.repeat
+		k_server >>
+			service_name.as(:server_name) >>
+		k_lwing >>
+			scope.repeat.as(:server_body) >>
+		k_rwing
 	}
 
 	rule(:scope) {
-		generic_type >> field_name >> k_default.maybe >> eol
+		generic_type.as(:scope_type) >>
+		field_name.as(:scope_name) >>
+		k_default.maybe.as(:scope_default) >>
+		eol
 	}
 
 
@@ -344,6 +347,10 @@ class Parser < Parslet::Parser
 
 	rule(:class_name) {
 		name
+	}
+
+	rule(:service_name) {
+		class_name
 	}
 
 	rule(:field_name) {

@@ -53,20 +53,20 @@ message EmptyExample {
 message DefaultExample {
 	1: int32 f1 = 1212
 	2: string f2 = "test"
-	3: list<int16> f3 = [1,2,3]
-	4: map<string,int16> f4 = {"a":1, "b":10}
+	//3: list<int16> f3 = [1,2,3]
+	//4: map<string,int16> f4 = {"a":1, "b":10}
 }
 
 const int32 CONST1 = 11211
 const string CONST2 = "test"
-const list<int16> CONST3 = [1,2,3]
-const map<string,int16> CONST4 = {"a":1, "b":10}
+//const list<int16> CONST3 = [1,2,3]
+//const map<string,int16> CONST4 = {"a":1, "b":10}
 
 message ConstExample {
 	1: int32 f1 = CONST1
 	2: string f2 = CONST2
-	3: list<int16> f2 = CONST3
-	4: map<string,int16> f4 = CONST4
+	//3: list<int16> f2 = CONST3
+	//4: map<string,int16> f4 = CONST4
 }
 
 message BuiltInConstExample {

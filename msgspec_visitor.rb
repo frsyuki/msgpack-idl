@@ -222,7 +222,6 @@ module AST
 		attr_reader :name, :super_class, :versions
 	end
 
-
 	class ServiceVersion < Element
 		def initialize(version, funcs)
 			@version = version
@@ -230,6 +229,32 @@ module AST
 		end
 
 		attr_reader :version, :funcs
+	end
+
+
+	class Server < Element
+		def initialize(name, scopes)
+			@name = name
+			@scopes = scopes
+		end
+
+		attr_reader :name
+		attr_reader :scopes
+	end
+
+
+	class Scope < Element
+		def initialize(type, name, default)
+			@type = type
+			@name = name
+			@default = default
+		end
+
+		attr_reader :type, :name
+
+		def default?
+			@default
+		end
 	end
 
 
@@ -297,6 +322,12 @@ module AST
 	class Literal
 	end
 
+	class ConstLiteral < Literal
+		def initialize(name)
+			@name = name
+		end
+	end
+
 	class IntLiteral < Literal
 		def initialize(value)
 			@value = value
@@ -327,30 +358,27 @@ module AST
 		end
 	end
 
-	class ListLiteral < Literal
-		def initialize(array)
-			@array = array
-		end
-	end
+	# TODO container literal
+	#class ListLiteral < Literal
+	#	def initialize(array)
+	#		@array = array
+	#	end
+	#end
 
-	class MapLiteralPair
-		def initialize(k, v)
-			@key = k
-			@value = v
-		end
-	end
+	# TODO container literal
+	#class MapLiteralPair
+	#	def initialize(k, v)
+	#		@key = k
+	#		@value = v
+	#	end
+	#end
 
-	class MapLiteral < Literal
-		def initialize(pairs)
-			@pairs = pairs
-		end
-	end
-
-	class ConstLiteral < Literal
-		def initialize(name)
-			@name = name
-		end
-	end
+	# TODO container literal
+	#class MapLiteral < Literal
+	#	def initialize(pairs)
+	#		@pairs = pairs
+	#	end
+	#end
 
 
 	FIELD_OPTIONAL = :optional
@@ -381,12 +409,10 @@ class Visitor < Parslet::Transform
 	}
 
 	rule(:sequence => simple(:x)) {
-		#puts "sequence: #{x.inspect}"
 		x ? AST::Sequence.new([x]) : AST::Sequence.new
 	}
 
 	rule(:sequence => sequence(:x)) {
-		#puts "sequence: #{x.inspect}"
 		AST::Sequence.new(x)
 	}
 
@@ -426,16 +452,6 @@ class Visitor < Parslet::Transform
 	}
 
 
-	rule(:field_type => simple(:t),
-			 :field_type_maybe => simple(:n)) {
-		if n
-			AST::FieldType.new(t, true)
-		else
-			AST::FieldType.new(t, false)
-		end
-	}
-
-
 	rule(:field_id => simple(:i),
 			 :field_modifier => simple(:m),
 			 :field_type => simple(:t),
@@ -448,6 +464,79 @@ class Visitor < Parslet::Transform
 			AST::ValueAssignedField.new(i, t, m, n, v)
 		end
 	}
+
+	rule(:field_type => simple(:t),
+			 :field_type_maybe => simple(:n)) {
+		if n
+			AST::FieldType.new(t, true)
+		else
+			AST::FieldType.new(t, false)
+		end
+	}
+
+
+	rule(:lang_type_token => simple(:t)) {
+		t
+	}
+
+	rule(:lang_type_tokens => sequence(:ts)) {
+		AST::LangType.new(ts)
+	}
+
+
+	rule(:literal_const => simple(:n)) {
+		AST::ConstLiteral.new(n)
+	}
+
+	rule(:literal_int => simple(:i)) {
+		AST::IntLiteral.new(i.to_i)
+	}
+
+	rule(:literal_float => simple(:f)) {
+		AST::FloatLiteral.new(f.to_f)
+	}
+
+	rule(:literal_str_dq => simple(:s)) {
+		s.to_s.gsub(/\\(.)/) {|e|
+			eval("\"\\#{$~[1]}\"")  # TODO escape
+		}
+	}
+
+	rule(:literal_str_sq => simple(:s)) {
+		s.to_s
+	}
+
+	rule(:literal_str_seq => sequence(:ss)) {
+		AST::StringLiteral.new(ss.join)
+	}
+
+	rule(:literal_nil => simple(:_)) {
+		AST::NilLiteral.new
+	}
+
+	rule(:literal_true => simple(:_)) {
+		AST::TrueLiteral.new
+	}
+
+	rule(:literal_false => simple(:_)) {
+		AST::FalseLiteral.new
+	}
+
+	# TODO container literal
+	#rule(:literal_list => simple(:a)) {
+	#	AST::ListLiteral.new(Array.new(a))
+	#}
+
+	# TODO container literal
+	#rule(:literal_map => simple(:ps)) {
+	#	AST::MapLiteral.new(Array.new(ps))
+	#}
+
+	# TODO container literal
+	#rule(:literal_map_key => simple(:k), :literal_map_value => simple(:v)) {
+	#	AST::MapLiteralPair.new(k, v)
+	#}
+
 
 	rule(:type_param_decl => simple(:tp),
 			 :message_name => simple(:n),
@@ -468,6 +557,48 @@ class Visitor < Parslet::Transform
 			AST::GenericException.new(n, sc, b, tp)
 		else
 			AST::Exception.new(n, sc, b)
+		end
+	}
+
+
+	rule(:const_type => simple(:t),
+			 :const_name => simple(:n),
+			 :const_value => simple(:v)) {
+		AST::Const.new(t, n, v)
+	}
+
+
+	rule(:type_param_decl => simple(:tp),
+			 :typedef_type => simple(:t),
+			 :typedef_name => simple(:n)) {
+		if tp
+			AST::GenericTypedef.new(t, n, tp)
+		else
+			AST::Typedef.new(t, n)
+		end
+	}
+
+
+	rule(:type_param_decl => simple(:tp),
+			 :typespec_lang => simple(:n),
+			 :typespec_class => simple(:c),
+			 :typespec_field => simple(:f),
+			 :typespec_spec => simple(:s)) {
+		if tp
+			AST::GenericFieldSpec.new(n, c, f, s, tp)
+		else
+			AST::FieldSpec.new(n, c, f, s)
+		end
+	}
+
+	rule(:type_param_decl => simple(:tp),
+			 :typespec_lang => simple(:n),
+			 :typespec_type => simple(:t),
+			 :typespec_spec => simple(:s)) {
+		if tp
+			AST::GenericTypeSpec.new(n, t, s, tp)
+		else
+			AST::TypeSpec.new(n, t, s)
 		end
 	}
 
@@ -518,104 +649,19 @@ class Visitor < Parslet::Transform
 	}
 
 
-	rule(:type_param_decl => simple(:tp),
-			 :typedef_type => simple(:t),
-			 :typedef_name => simple(:n)) {
-		if tp
-			AST::GenericTypedef.new(t, n, tp)
+	rule(:scope_type => simple(:t),
+			 :scope_name => simple(:n),
+			 :scope_default => simple(:d)) {
+		if d
+			AST::Scope.new(t, n, true)
 		else
-			AST::Typedef.new(t, n)
+			AST::Scope.new(t, n, false)
 		end
 	}
 
-
-	rule(:type_param_decl => simple(:tp),
-			 :typespec_lang => simple(:n),
-			 :typespec_class => simple(:c),
-			 :typespec_field => simple(:f),
-			 :typespec_spec => simple(:s)) {
-		if tp
-			AST::GenericFieldSpec.new(n, c, f, s, tp)
-		else
-			AST::FieldSpec.new(n, c, f, s)
-		end
-	}
-
-	rule(:type_param_decl => simple(:tp),
-			 :typespec_lang => simple(:n),
-			 :typespec_type => simple(:t),
-			 :typespec_spec => simple(:s)) {
-		if tp
-			AST::GenericTypeSpec.new(n, t, s, tp)
-		else
-			AST::TypeSpec.new(n, t, s)
-		end
-	}
-
-	rule(:lang_type_token => simple(:t)) {
-		t
-	}
-
-	rule(:lang_type_tokens => sequence(:ts)) {
-		AST::LangType.new(ts)
-	}
-
-
-	rule(:const_type => simple(:t),
-			 :const_name => simple(:n),
-			 :const_value => simple(:v)) {
-		AST::Const.new(t, n, v)
-	}
-
-
-	rule(:literal_int => simple(:i)) {
-		AST::IntLiteral.new(i.to_i)
-	}
-
-	rule(:literal_float => simple(:f)) {
-		AST::FloatLiteral.new(f.to_f)
-	}
-
-	rule(:literal_str_dq => simple(:s)) {
-		s.to_s.gsub(/\\(.)/) {|e|
-			eval("\"\\#{$~[1]}\"")  # TODO escape
-		}
-	}
-
-	rule(:literal_str_sq => simple(:s)) {
-		s.to_s
-	}
-
-	rule(:literal_str_seq => sequence(:ss)) {
-		AST::StringLiteral.new(ss.join)
-	}
-
-	rule(:literal_nil => simple(:_)) {
-		AST::NilLiteral.new
-	}
-
-	rule(:literal_true => simple(:_)) {
-		AST::TrueLiteral.new
-	}
-
-	rule(:literal_false => simple(:_)) {
-		AST::FalseLiteral.new
-	}
-
-	rule(:literal_list => simple(:a)) {
-		AST::ListLiteral.new(Array.new(a))
-	}
-
-	rule(:literal_map => simple(:ps)) {
-		AST::MapLiteral.new(Array.new(ps))
-	}
-
-	rule(:literal_map_key => simple(:k), :literal_map_value => simple(:v)) {
-		AST::MapLiteralPair.new(k, v)
-	}
-
-	rule(:literal_const => simple(:n)) {
-		AST::ConstLiteral.new(n)
+	rule(:server_name => simple(:n),
+			 :server_body => sequence(:b)) {
+		AST::Server.new(n, b)
 	}
 
 
