@@ -362,6 +362,7 @@ class Parser < Parslet::Parser
 
 	rule(:inline_comment) {
 		str('/*') >> (
+			inline_comment |   # accepts nested comments
 			(str('*') >> str('/').absent?) |
 			(str('*').absent? >> any)
 		).repeat >> str('*/')
