@@ -233,6 +233,9 @@ service VersionServiceExample {
 }
 
 
+include memo2.msgspec
+
+
 server MyApplication {
 	OptionalServiceExample scope1 default
 		// func1
@@ -257,4 +260,3 @@ server MyApplication {
 
 // example1-impl.msgspec
 
-#include example1.msgspec

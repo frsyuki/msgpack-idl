@@ -12,10 +12,16 @@ module AST
 	end
 
 
-	class Definition < Element
-		def initialize(body)
-			@body = body
+	class Document < Array
+	end
+
+
+	class Include
+		def initialize(path)
+			@path = path
 		end
+
+		attr_reader :path
 	end
 
 
@@ -675,8 +681,16 @@ class Visitor < Parslet::Transform
 	}
 
 
-	rule(:definitions => sequence(:ds)) {
-		AST::Definition.new(ds)
+	rule(:path => simple(:n)) {
+		n
+	}
+
+	rule(:include => simple(:n)) {
+		AST::Include.new(n.to_s)
+	}
+
+	rule(:document => sequence(:es)) {
+		AST::Document.new(es)
 	}
 end
 

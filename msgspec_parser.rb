@@ -2,7 +2,7 @@
 module MessageSpec
 
 
-class Parser < Parslet::Parser
+class ParsletParser < Parslet::Parser
 	class << self
 		def sequence(name, separator, element, min=0)
 			if min == 0
@@ -33,7 +33,17 @@ class Parser < Parslet::Parser
 	root :expression
 
 	rule(:expression) {
-		space? >> definition.repeat.as(:definitions) >> space?
+		space? >> document >> space?
+	}
+
+	rule(:document) {
+		(include_ | definition).repeat.as(:document)
+	}
+
+	rule(:include_) {
+		k_include >>
+		path.as(:include) >>
+		eol
 	}
 
 	rule(:definition) {
@@ -333,6 +343,11 @@ class Parser < Parslet::Parser
 	}
 
 
+	rule(:path) {
+		# TODO path
+		space? >> match('[a-zA-Z0-9_\-\.\ ]').repeat(1).as(:path) >> boundary
+	}
+
 	rule(:lang_name) {
 		name
 	}
@@ -442,74 +457,76 @@ class Parser < Parslet::Parser
 	separator('?', :k_question)
 	separator('.', :k_dot)
 
-	class << self
-		LINE_HEAD_FORMAT = " % 4d: "
-		LINE_HEAD_SIZE = (LINE_HEAD_FORMAT % 0).size
-		AFTER_BUFFER = 200
-		AFTER_LINES = 3
-		BEFORE_BUFFER = 200
-		BEFORE_LINES = 4
+	LINE_HEAD_FORMAT = " % 4d: "
+	LINE_HEAD_SIZE = (LINE_HEAD_FORMAT % 0).size
+	AFTER_BUFFER = 200
+	AFTER_LINES = 3
+	BEFORE_BUFFER = 200
+	BEFORE_LINES = 4
 
-		def print_error(parser, error)
-			last = parser.root.error_tree
-			until last.children.empty?
-				last = last.children.last
-			end
-			last_cause = last.parslet.instance_eval('@last_cause')
-			source = last_cause.source
+	def print_error(error, fname, out=STDERR)
+		error_tree = self.root.error_tree
 
-			row, col = source.line_and_column(last_cause.pos)
-
-			old_pos = source.pos
-			begin
-				source.pos = last_cause.pos - col + 1
-				line, *after = source.read(AFTER_BUFFER).to_s.split("\n")
-				after = after[0,AFTER_LINES]
-
-				source.pos = last_cause.pos - col - BEFORE_BUFFER
-				before = source.read(BEFORE_BUFFER).to_s.split("\n")
-				before = before[-BEFORE_LINES,BEFORE_LINES] || []
-			ensure
-				source.pos = old_pos
-			end
-
-			if m = /[ \t\r\n]*/.match(line)
-				heading = m[0]
-			else
-				heading = ""
-			end
-
-			puts "syntax error:"
-			(
-				error.to_s.split("\n") +
-				parser.root.error_tree.to_s.split("\n")
-			).each {|ln|
-				puts "  "+ln
-			}
-
-			puts ""
-			puts "around line #{row} column #{heading.size}-#{col}:"
-			puts ""
-
-			before.each_with_index {|ln,i|
-				l = row - after.size - 1 + i
-				print LINE_HEAD_FORMAT % l
-				puts ln
-			}
-
-			print LINE_HEAD_FORMAT % row
-			puts line
-			print " "*LINE_HEAD_SIZE
-			puts heading + '^'*(col - heading.size)
-
-			after.each_with_index {|ln,i|
-				l = row + 1 + i
-				print LINE_HEAD_FORMAT % l
-				puts ln
-			}
-
-			puts ""
+		last = error_tree
+		until last.children.empty?
+			last = last.children.last
 		end
+		last_cause = last.parslet.instance_eval('@last_cause')
+		source = last_cause.source
+
+		row, col = source.line_and_column(last_cause.pos)
+
+		old_pos = source.pos
+		begin
+			source.pos = last_cause.pos - col + 1
+			line, *after = source.read(AFTER_BUFFER).to_s.split("\n")
+			after = after[0,AFTER_LINES]
+
+			source.pos = last_cause.pos - col - BEFORE_BUFFER
+			before = source.read(BEFORE_BUFFER).to_s.split("\n")
+			before = before[-BEFORE_LINES,BEFORE_LINES] || []
+		ensure
+			source.pos = old_pos
+		end
+
+		if m = /[ \t\r\n]*/.match(line)
+			heading = m[0]
+		else
+			heading = ""
+		end
+
+		out.puts "syntax error:"
+		(
+			error.to_s.split("\n") +
+			error_tree.to_s.split("\n")
+		).each {|ln|
+			out.puts "  "+ln
+		}
+
+		out.puts ""
+		out.puts "around line #{row} column #{heading.size}-#{col}:"
+		out.puts ""
+
+		before.each_with_index {|ln,i|
+			l = row - after.size - 1 + i
+			out.print LINE_HEAD_FORMAT % l
+			out.puts ln
+		}
+
+		out.print LINE_HEAD_FORMAT % row
+		out.puts line
+		out.print " "*LINE_HEAD_SIZE
+		out.puts heading + '^'*(col - heading.size)
+
+		after.each_with_index {|ln,i|
+			l = row + 1 + i
+			out.print LINE_HEAD_FORMAT % l
+			out.puts ln
+		}
+
+		out.puts ""
+
+		out
 	end
 end
 
