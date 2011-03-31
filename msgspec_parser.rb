@@ -236,7 +236,7 @@ class Parser < Parslet::Parser
 
 
 	rule(:field_type) {
-		generic_type.as(:field_type) >> k_question.as(:field_type_maybe).maybe
+		generic_type.as(:field_type) >> k_question.maybe.as(:field_type_maybe)
 	}
 
 	rule(:return_type) {
@@ -244,13 +244,13 @@ class Parser < Parslet::Parser
 	}
 
 	rule(:generic_type) {
-		class_name.as(:generic_type) >> type_param.maybe
+		class_name.as(:generic_type) >> type_param.maybe.as(:type_params)
 	}
 
 	sequence :type_param_seq, :k_comma, :generic_type, 1
 
 	rule(:type_param) {
-		k_lpoint >> type_param_seq.as(:type_params) >> k_rpoint
+		k_lpoint >> type_param_seq >> k_rpoint
 	}
 
 	sequence :type_param_decl_seq, :k_comma, :class_name, 1
@@ -261,20 +261,25 @@ class Parser < Parslet::Parser
 
 
 	rule(:literal) {
-		literal_bool | literal_const | literal_int | literal_float | literal_str | literal_list | literal_map
+		literal_nil | literal_bool | literal_int | literal_float | literal_str | literal_list | literal_map | literal_const
 	}
 
-	rule(:literal_const) {
-		const_name.as(:literal_const)
+	rule(:literal_nil) {
+		k_nil.as(:literal_nil)
 	}
 
 	rule(:literal_bool) {
 		k_true.as(:literal_true) | k_false.as(:literal_false)
 	}
 
+	rule(:literal_const) {
+		const_name.as(:literal_const)
+	}
+
 	rule(:literal_int) {
 		space? >> (
-			str('0') | (match('[1-9]') >> match('[0-9]').repeat)
+			(str('-') | str('+')).maybe >>
+			(str('0') | (match('[1-9]') >> match('[0-9]').repeat))
 		).as(:literal_int) >>
 		boundary
 	}
@@ -405,6 +410,7 @@ class Parser < Parslet::Parser
 	keyword('required')
 	keyword('throws')
 	keyword('default')
+	keyword('nil')
 	keyword('true')
 	keyword('false')
 	keyword('void')
@@ -477,8 +483,8 @@ class Parser < Parslet::Parser
 			puts "around line #{row} column #{heading.size}-#{col}:"
 			puts ""
 
-			after.each_with_index {|ln,i|
-				l = row - after.size + i
+			before.each_with_index {|ln,i|
+				l = row - after.size - 1 + i
 				print LINE_HEAD_FORMAT % l
 				puts ln
 			}
@@ -488,16 +494,11 @@ class Parser < Parslet::Parser
 			print " "*LINE_HEAD_SIZE
 			puts heading + '^'*(col - heading.size)
 
-			before.each_with_index {|ln,i|
+			after.each_with_index {|ln,i|
 				l = row + 1 + i
 				print LINE_HEAD_FORMAT % l
 				puts ln
 			}
-
-			syn = before[-1,1] || []
-			syn.push(line)
-			syn.push(heading + '^'*(col - heading.size))
-			syn.concat(after[0,1])
 
 			puts ""
 		end

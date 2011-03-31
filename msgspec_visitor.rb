@@ -3,48 +3,295 @@ module MessageSpec
 
 
 module AST
-	class Definition
+	class Element
+	end
+
+
+	module ValueAssigned
+		attr_reader :value
+	end
+
+
+	class Definition < Element
 		def initialize(body)
 			@body = body
 		end
 	end
 
-	Namespace = Struct.new(:space, :lang)
 
-	Message = Struct.new(:name, :super_class, :body)
-	GenericMessage = Struct.new(:name, :super_class, :body, :type_param_decl)
+	class Namespace < Element
+		def initialize(scopes, lang)
+			@scopes = scopes
+			@lang = lang
+		end
 
-	Exception = Struct.new(:name, :super_class, :body)
-	GenericException = Struct.new(:name, :super_class, :body, :type_param_decl)
+		attr_reader :scopes, :lang
 
-	Field = Struct.new(:id, :type, :modifier, :name, :default)
+		def scope(separator='::')
+			@scopes.join(separator)
+		end
 
-	Enum = Struct.new(:name, :body)
-	EnumField = Struct.new(:id, :name)
+		def lang_specific?
+			!!@lang
+		end
+	end
 
-	Typedef = Struct.new(:type, :name)
-	GenericTypedef = Struct.new(:type, :name, :type_param_decl)
 
-	Const = Struct.new(:type, :name, :value)
+	class Generics < Element
+		def initialize(type_params)
+			@type_params = type_params
+		end
 
-	FieldSpec = Struct.new(:name, :target_class, :target_field, :spec)
-	GenericFieldSpec = Struct.new(:name, :target_class, :target_field, :spec, :type_param_decl)
-	TypeSpec = Struct.new(:name, :target_type, :spec)
-	GenericTypeSpec = Struct.new(:name, :target_type, :spec, :type_param_decl)
-	LangScope = Struct.new(:name)
-	GenericLangScope = Struct.new(:name, :type_param_decl)
-	LangType = Struct.new(:tokens)
+		attr_reader :type_params
+	end
 
-	Service = Struct.new(:name, :super_class, :versions)
-	#GenericService = Struct.new(:name, :super_class, :versions, :type_param_decl)
-	ServiceVersion = Struct.new(:version, :funcs)
 
-	Func = Struct.new(:name, :modifier, :return_type, :args, :exceptions)
+	class Message < Element
+		def initialize(name, super_class, fields)
+			@name = name
+			@super_class = super_class
+			@fields = fields
+		end
 
-	FieldType = Struct.new(:type, :nullable)
+		attr_reader :name, :super_class, :fields
+	end
 
-	Type = Struct.new(:type)
-	GenericType = Struct.new(:type, :type_params)
+
+	class GenericMessage < Generics
+		def initialize(name, super_class, fields, type_params)
+			super(type_params)
+			@name = name
+			@super_class = super_class
+			@fields = fields
+		end
+
+		attr_reader :name, :super_class, :fields
+	end
+
+
+	class Exception < Message
+	end
+
+	class GenericException < GenericMessage
+	end
+
+
+	class Field < Element
+		def initialize(field_id, type, modifier, name)
+			@field_id = field_id
+			@type = type
+			@name = name
+			@modifier = modifier
+		end
+
+		attr_reader :field_id, :type, :name
+
+		def required?
+			@modifier == FIELD_REQUIRED
+		end
+
+		def optional?
+			@modifier == FIELD_OPTIONAL
+		end
+	end
+
+
+	class ValueAssignedField < Field
+		include ValueAssigned
+
+		def initialize(field_id, type, modifier, name, value)
+			@field_id = field_id
+			@type = type
+			@modifier = modifier
+			@name = name
+			@value = value
+		end
+	end
+
+
+	class Enum < Element
+		def initialize(name, fields)
+			@name = name
+			@fields = fields
+		end
+
+		attr_reader :name, :fields
+	end
+
+	class EnumField < Element
+		def initialize(field_id, name)
+			@field_id = field_id
+			@name = name
+		end
+	end
+
+
+	class Typedef < Element
+		def initialize(type, new_type)
+			@type = type
+			@new_type = new_type
+		end
+
+		attr_reader :type
+		attr_reader :new_type
+	end
+
+
+	class GenericTypedef < Generics
+		def initialize(type, new_type, type_params)
+			super(type_params)
+			@type = type
+			@new_type = new_type
+		end
+	end
+
+
+	class Const < Element
+		include ValueAssigned
+
+		def initialize(type, name, value)
+			@type = type
+			@name = name
+			@value = value
+		end
+
+		attr_reader :type, :name
+	end
+
+
+	class FieldSpec < Element
+		def initialize(name, target_class, target_field, spec)
+			@name = name
+			@target_class = target_class
+			@target_field = target_field
+			@spec = spec
+		end
+
+		attr_reader :name, :target_class, :target_field, :spec
+	end
+
+	class GenericFieldSpec < Generics
+		def initialize(name, target_class, target_field, spec, type_params)
+			super(type_params)
+			@name = name
+			@target_class = target_class
+			@target_field = target_field
+			@spec = spec
+		end
+
+		attr_reader :name, :target_class, :target_field, :spec
+	end
+
+	class TypeSpec < Element
+		def initialize(name, target_type, spec)
+			@name = name
+			@target_type = target_type
+			@spec = spec
+		end
+
+		attr_reader :name, :target_type, :spec
+	end
+
+	class GenericTypeSpec < Generics
+		def initialize(name, target_type, spec, type_params)
+			super(type_params)
+			@name = name
+			@target_type = target_type
+			@spec = spec
+		end
+
+		attr_reader :name, :target_type, :spec
+	end
+
+	class LangType < Element
+		def initialize(tokens)
+			@tokens = tokens
+		end
+
+		attr_reader :tokens
+	end
+
+
+	class Service < Element
+		def initialize(name, super_class, versions)
+			@name = name
+			@super_class = super_class
+			@versions = versions
+		end
+
+		attr_reader :name, :super_class, :versions
+	end
+
+
+	class ServiceVersion < Element
+		def initialize(version, funcs)
+			@version = version
+			@funcs = funcs
+		end
+
+		attr_reader :version, :funcs
+	end
+
+
+	class Func < Element
+		def initialize(name, modifier, return_type, args, exceptions)
+			@name = name
+			@modifier = modifier
+			@return_type = return_type
+			@args = args
+			@exceptions = exceptions
+		end
+
+		attr_reader :name, :return_type, :args, :exceptions
+
+		def override?
+			@modifier == FUNC_OVERRIDE
+		end
+
+		def remove?
+			@modifier == FUNC_REMOVE
+		end
+
+		def add?
+			@modifier == FUNC_ADD
+		end
+
+		attr_reader :modifier
+
+		def has_exceptions?
+			!@exceptions.empty?
+		end
+	end
+
+
+	class FieldType
+		def initialize(type, nullable)
+			@type = type
+			@nullable = nullable
+		end
+
+		attr_reader :type
+
+		def nullable?
+			@nullable
+		end
+	end
+
+
+	class Type < Element
+		def initialize(name)
+			@name = name
+		end
+	end
+
+	class GenericSpecifiedType < Type
+		def initialize(name, type_params)
+			super(name)
+			@type_params = type_params
+		end
+
+		attr_reader :type_params
+	end
 
 
 	class Literal
@@ -60,6 +307,9 @@ module AST
 		def initialize(value)
 			@value = value
 		end
+	end
+
+	class NilLiteral < Literal
 	end
 
 	class BoolLiteral < Literal
@@ -117,6 +367,11 @@ end
 
 
 class Visitor < Parslet::Transform
+	rule(:name => simple(:n)) {
+		n
+	}
+
+
 	rule(:sequence_x => simple(:x)) {
 		x
 	}
@@ -136,88 +391,48 @@ class Visitor < Parslet::Transform
 	}
 
 
-	rule(:name => simple(:n)) {
-		n
+	rule(:val_int => simple(:i)) {
+		i.to_i
 	}
 
-
-	rule(:generic_type => simple(:n)) {
-		AST::Type.new(n)
+	rule(:val_optional => simple(:x)) {
+		AST::FIELD_OPTIONAL
 	}
+
+	rule(:val_required => simple(:x)) {
+		AST::FIELD_REQUIRED
+	}
+
+	rule(:val_override => simple(:x)) {
+		AST::FUNC_OVERRIDE
+	}
+
+	rule(:val_remove => simple(:x)) {
+		AST::FUNC_REMOVE
+	}
+
+	rule(:val_add => simple(:x)) {
+		AST::FUNC_ADD
+	}
+
 
 	rule(:generic_type => simple(:n),
-			 :type_params => sequence(:tp)) {
-		AST::GenericType.new(n, tp)
+			 :type_params => simple(:tp)) {
+		if tp
+			AST::Type.new(n)
+		else
+			AST::GenericSpecifiedType.new(n, tp)
+		end
 	}
 
 
 	rule(:field_type => simple(:t),
 			 :field_type_maybe => simple(:n)) {
-		AST::FieldType.new(t, true)
-	}
-
-	rule(:field_type => simple(:t)) {
-		AST::FieldType.new(t, false)
-	}
-
-
-	rule(:type_param_decl => simple(:tp),
-			 :typedef_type => simple(:t),
-			 :typedef_name => simple(:n)) {
-		if tp
-			AST::GenericTypedef.new(t, n, tp)
+		if n
+			AST::FieldType.new(t, true)
 		else
-			AST::Typedef.new(t, n)
+			AST::FieldType.new(t, false)
 		end
-	}
-
-
-	rule(:namespace_name => simple(:n)) {
-		AST::Namespace.new(n, nil)
-	}
-
-	rule(:namespace_name => simple(:n),
-			 :namespace_lang => simple(:l)) {
-		AST::Namespace.new(n, l)
-	}
-
-
-	rule(:type_param_decl => simple(:tp),
-			 :typespec_lang => simple(:n),
-			 :typespec_class => simple(:c),
-			 :typespec_field => simple(:f),
-			 :typespec_spec => simple(:s)) {
-		if tp
-			AST::GenericFieldSpec.new(n, c, f, s, tp)
-		else
-			AST::FieldSpec.new(n, c, f, s)
-		end
-	}
-
-	rule(:type_param_decl => simple(:tp),
-			 :typespec_lang => simple(:n),
-			 :typespec_type => simple(:t),
-			 :typespec_spec => simple(:s)) {
-		if tp
-			AST::GenericTypeSpec.new(n, t, s, tp)
-		else
-			AST::TypeSpec.new(n, t, s)
-		end
-	}
-
-	rule(:lang_type_token => simple(:t)) {
-		t
-	}
-
-	rule(:lang_type_tokens => sequence(:ts)) {
-		AST::LangType.new(ts)
-	}
-
-
-	rule(:const_type => simple(:t),
-			 :const_name => simple(:n),
-			 :const_value => simple(:v)) {
-		AST::Const.new(t, n, v)
 	}
 
 
@@ -227,7 +442,11 @@ class Visitor < Parslet::Transform
 			 :field_name => simple(:n),
 			 :field_default => simple(:v)) {
 		m ||= AST::FIELD_REQUIRED
-		AST::Field.new(i, t, m, n, v)
+		if v == nil
+			AST::Field.new(i, t, m, n)
+		else
+			AST::ValueAssignedField.new(i, t, m, n, v)
+		end
 	}
 
 	rule(:type_param_decl => simple(:tp),
@@ -240,7 +459,6 @@ class Visitor < Parslet::Transform
 			AST::Message.new(n, sc, b)
 		end
 	}
-
 
 	rule(:type_param_decl => simple(:tp),
 			 :exception_name => simple(:n),
@@ -300,33 +518,53 @@ class Visitor < Parslet::Transform
 	}
 
 
-	rule(:definitions => sequence(:ds)) {
-		AST::Definition.new(ds)
+	rule(:type_param_decl => simple(:tp),
+			 :typedef_type => simple(:t),
+			 :typedef_name => simple(:n)) {
+		if tp
+			AST::GenericTypedef.new(t, n, tp)
+		else
+			AST::Typedef.new(t, n)
+		end
 	}
 
 
-	rule(:val_int => simple(:i)) {
-		i.to_i
+	rule(:type_param_decl => simple(:tp),
+			 :typespec_lang => simple(:n),
+			 :typespec_class => simple(:c),
+			 :typespec_field => simple(:f),
+			 :typespec_spec => simple(:s)) {
+		if tp
+			AST::GenericFieldSpec.new(n, c, f, s, tp)
+		else
+			AST::FieldSpec.new(n, c, f, s)
+		end
 	}
 
-	rule(:val_optional => simple(:x)) {
-		AST::FIELD_OPTIONAL
+	rule(:type_param_decl => simple(:tp),
+			 :typespec_lang => simple(:n),
+			 :typespec_type => simple(:t),
+			 :typespec_spec => simple(:s)) {
+		if tp
+			AST::GenericTypeSpec.new(n, t, s, tp)
+		else
+			AST::TypeSpec.new(n, t, s)
+		end
 	}
 
-	rule(:val_required => simple(:x)) {
-		AST::FIELD_REQUIRED
+	rule(:lang_type_token => simple(:t)) {
+		t
 	}
 
-	rule(:val_override => simple(:x)) {
-		AST::FUNC_OVERRIDE
+	rule(:lang_type_tokens => sequence(:ts)) {
+		AST::LangType.new(ts)
 	}
 
-	rule(:val_remove => simple(:x)) {
-		AST::FUNC_REMOVE
-	}
 
-	rule(:val_add => simple(:x)) {
-		AST::FUNC_ADD
+	rule(:const_type => simple(:t),
+			 :const_name => simple(:n),
+			 :const_value => simple(:v)) {
+		AST::Const.new(t, n, v)
 	}
 
 
@@ -352,6 +590,10 @@ class Visitor < Parslet::Transform
 		AST::StringLiteral.new(ss.join)
 	}
 
+	rule(:literal_nil => simple(:_)) {
+		AST::NilLiteral.new
+	}
+
 	rule(:literal_true => simple(:_)) {
 		AST::TrueLiteral.new
 	}
@@ -374,6 +616,21 @@ class Visitor < Parslet::Transform
 
 	rule(:literal_const => simple(:n)) {
 		AST::ConstLiteral.new(n)
+	}
+
+
+	rule(:namespace_name => simple(:n)) {
+		AST::Namespace.new(n, nil)
+	}
+
+	rule(:namespace_name => simple(:n),
+			 :namespace_lang => simple(:l)) {
+		AST::Namespace.new(n, l)
+	}
+
+
+	rule(:definitions => sequence(:ds)) {
+		AST::Definition.new(ds)
 	}
 end
 
