@@ -136,7 +136,7 @@ class ParsletParser < Parslet::Parser
 	rule(:typedef) {
 		k_typedef >>
 			type_param_decl.maybe.as(:type_param_decl) >>
-			field_type.as(:typedef_type) >>
+			generic_type.as(:typedef_type) >>
 			generic_type.as(:typedef_name) >>
 		eol
 	}

@@ -18,12 +18,14 @@ class Processor
 	def initialize(search_paths = [])
 		@parslet = ParsletParser.new
 		@visitor = Visitor.new
+		@evaluator = nil
 		@search_paths = search_paths
 		@ast = []
 	end
 
 	attr_reader :parslet
 	attr_reader :visitor
+	attr_reader :evaluator
 	attr_reader :ast
 
 	def parse(src, fname, dir)
@@ -46,6 +48,16 @@ class Processor
 
 	def parse_file(path)
 		parse(File.read(path), File.basename(path), File.dirname(path))
+	end
+
+	def evaluate
+		@evaluator ||= Evaluator.new
+		@evaluator.evaluate(@ast)
+		self
+	end
+
+	def generate(specs, dir)
+		# real_type_table
 	end
 
 	protected

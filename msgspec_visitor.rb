@@ -83,14 +83,14 @@ module AST
 
 
 	class Field < Element
-		def initialize(field_id, type, modifier, name)
+		def initialize(field_id, field_type, modifier, name)
 			@field_id = field_id
-			@type = type
+			@field_type = field_type
 			@name = name
 			@modifier = modifier
 		end
 
-		attr_reader :field_id, :type, :name
+		attr_reader :field_id, :field_type, :name
 
 		def required?
 			@modifier == FIELD_REQUIRED
@@ -138,8 +138,7 @@ module AST
 			@new_type = new_type
 		end
 
-		attr_reader :type
-		attr_reader :new_type
+		attr_reader :type, :new_type
 	end
 
 
@@ -149,19 +148,21 @@ module AST
 			@type = type
 			@new_type = new_type
 		end
+
+		attr_reader :type, :new_type
 	end
 
 
 	class Const < Element
 		include ValueAssigned
 
-		def initialize(type, name, value)
-			@type = type
+		def initialize(field_type, name, value)
+			@field_type = field_type
 			@name = name
 			@value = value
 		end
 
-		attr_reader :type, :name
+		attr_reader :field_type, :name
 	end
 
 
@@ -313,6 +314,8 @@ module AST
 		def initialize(name)
 			@name = name
 		end
+
+		attr_reader :name
 	end
 
 	class GenericSpecifiedType < Type
@@ -402,7 +405,7 @@ end
 
 class Visitor < Parslet::Transform
 	rule(:name => simple(:n)) {
-		n
+		n.to_s
 	}
 
 
@@ -451,9 +454,9 @@ class Visitor < Parslet::Transform
 	rule(:generic_type => simple(:n),
 			 :type_params => simple(:tp)) {
 		if tp
-			AST::Type.new(n)
-		else
 			AST::GenericSpecifiedType.new(n, tp)
+		else
+			AST::Type.new(n)
 		end
 	}
 
@@ -482,7 +485,7 @@ class Visitor < Parslet::Transform
 
 
 	rule(:lang_type_token => simple(:t)) {
-		t
+		t.to_s
 	}
 
 	rule(:lang_type_tokens => sequence(:ts)) {
