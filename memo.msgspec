@@ -1,38 +1,35 @@
 
-// example1.msgspec
-
 namespace com.example
 namespace cpp example
 namespace ruby Example
 
 message BasicTypeExample {
-	1:  int8   f1
-	2:  int16  f2
-	3:  int32  f3
-	4:  int64  f4
-	5:  uint8  f5
-	6:  uint16 f6
-	7:  uint32 f7
-	8:  uint64 f8
+	1:  byte   f1
+	2:  short  f2
+	3:  int    f3
+	4:  long   f4
+	5:  ubyte  f5
+	6:  ushort f6
+	7:  uint   f7
+	8:  ulong  f8
 	9:  float  f9
 	10: double f10
 	11: bool   f11
 	12: raw    f12
 	13: string f13
-	14: date   f14
 }
 
 message ContainerTypeExample {
 	1: list<string> f1
 	2: map<string,string> f2
-	3: set<string> f3
+	//3: set<string> f3
 }
 
 message OptionalExample {
 	1: string f1           // required non-nullable
 	2: required string f2  // required non-nullable
 	3: optional string f3  // optional non-nullable
-	4: int32 f4            // required non-nullable
+	4: int f4              // required non-nullable
 	5: required int32 f5   // required non-nullable
 	6: optional int32 f6   // optional non-nullable
 }
@@ -41,7 +38,7 @@ message NullableExample {
 	1: string? f1           // required nullable
 	2: required string? f2  // required nullable
 	3: optional string? f3  // optional nullable
-	4: int32? f4            // required nullable
+	4: int? f4              // required nullable
 	5: required int32? f5   // required nullable
 	6: optional int32? f6   // optional nullable
 }
@@ -49,35 +46,12 @@ message NullableExample {
 message EmptyExample {
 }
 
-
 message DefaultExample {
 	1: int32 f1 = 1212
-	2: string f2 = "test"
+	//2: string f2 = "test"
 	//3: list<int16> f3 = [1,2,3]
 	//4: map<string,int16> f4 = {"a":1, "b":10}
 }
-
-const int32 CONST1 = 11211
-const string CONST2 = "test"
-//const list<int16> CONST3 = [1,2,3]
-//const map<string,int16> CONST4 = {"a":1, "b":10}
-
-message ConstExample {
-	1: int32 f1 = CONST1
-	2: string f2 = CONST2
-	//3: list<int16> f2 = CONST3
-	//4: map<string,int16> f4 = CONST4
-}
-
-message BuiltInConstExample {
-	1: int8 f1 = INT8_MAX
-	2: int16 f2 = INT16_MAX
-	3: int32 f3 = INT32_MAX
-	4: int64 f4 = INT64_MAX
-	5: bool f5 = true
-	6: bool f6 = false
-}
-
 
 enum EnumExample {
 	1: RED
@@ -86,62 +60,50 @@ enum EnumExample {
 }
 
 
-typedef map<string,string> PropertyMap;
-
-message TypedefExampel {
-	1: PropertyMap f1
-}
-
-
-typedef<V> map<string,V> GenericStringMap;
-
-message<V> GenericExample {
-	1: V f1
-	2: list<V> f2
-	3: GenericStringMap<V> f3
-}
-
-typedef GenericExample<string> GenericExampleSpecific1
-typedef GenericExample<bool> GenericExampleSpecific2
-
-
-message TypeSpecExample {
-	1: list<string> f1
-}
-
-typespec cpp TypeSpecExample.f1 std::vector<std::string>
-
-typespec cpp PropertyMap std::tr1::unordered_map<std::string,std::string>
-typespec<V> cpp GenericStringMap<V> std::unordered_map<string,V>
-
-
-exception BasicExceptionExample {
-	1: string message
-	2: int32 code
-}
-
 exception SuperExceptionExample {
 	1: string message
 	2: int32 code
-
-	/*
-	exception SubExceptionExample1 {
-		3: string key
-		4: raw value
-	}
-
-	exception SubExceptionExample2 {
-		3: int32 flags
-
-		exception SubSubExceptionExample {
-			4: string value
-		}
-	}
-	*/
 }
 
 exception SubExceptionExample3 < SuperExceptionExample {
 	3: raw key
+}
+
+
+message ObjectKey {
+	1: int rsid
+	2: raw key
+}
+
+interface Gateway:0 {
+	raw get_data(1: raw key)
+	ObjectKey add(1: raw key, 2: raw data, 3: map<raw,raw> attrs)
+}
+
+interface DataServer:0 {
+	raw get(1: raw key)
+	void set(1: raw key, 2: raw data)
+}
+
+service Gateway:0 {
+	implements Gateway:0
+}
+
+service DataServer {
+	implements Gateway:0
+	implements DataServer:0
+}
+
+
+interface InterfaceExample:0 {
+}
+
+interface IfaceVersionExample:0 {
+}
+
+service TestService:0 {
+	implements InterfaceExample:0
+	implements IfaceVersionExample:0
 }
 
 
@@ -165,98 +127,4 @@ service ExceptionServiceExample {
 	void func2() throws BasicExceptionExample
 }
 
-service SubServiceExample < BasicExceptionExample {
-	! string func1(1: string key, 2: string value)  // override
-	- string func1(1: string key, 2: string value)  // delete
-	+ string func6()  // add
-	string func7()  // add
-}
-
-
-// バージョニング案1（関数ごとのバージョン）
-/*
-service VersionServiceExample {
-	void func1(1: string key)   // version 0
-	void func1:1(1: string key, 2: optional string? value)
-	uint32? func1:2(1: string key, 2: optional string? value)
-	void func2:0(1: string key)
-	string func3()
-	string func3:1(1: optional int32 flags)
-
-	// func1    // func1:2
-	// func1:0  // func1:0
-	// func1:1  // func1:1
-	// func1:2  // func1:2
-	// func1:3  // エラー (VersionMismatch)
-	// func2    // func2:0
-	// func2:0  // func2:0
-	// func2:1  // エラー (VersionMismatch)
-	// func2:2  // エラー (VersionMismatch)
-	// func2:3  // エラー (VersionMismatch)
-	// func3    // func3:1
-	// func3:0  // func3:0
-	// func3:1  // func3:1
-	// func3:2  // エラー (VersionMismatch)
-	// func3:3  // エラー (VersionMismatch)
-}
-*/
-
-// バージョニング案2（関数セットごとのバージョン）
-service VersionServiceExample {
-	void func1(1: string key)
-	void func2(1: string key)
-
-1:
-	! void func1(1: string key, 2: optional string? value)
-	+ string func3()
-
-2:
-	! uint32? func1(1: string key, 2: optional string? value)
-	- void func2(1: string key)
-	! string func3(1: optional int32 flags)
-
-	// func1    // func1:2
-	// func1:0  // func1:0
-	// func1:1  // func1:1
-	// func1:2  // func1:2
-	// func1:3  // エラー (VersionMismatch)
-	// func2    // func2:0
-	// func2:0  // func2:0
-	// func2:1  // func2:0
-	// func2:2  // エラー (VersionMismatch)
-	// func2:3  // エラー (VersionMismatch)
-	// func3    // func3:2
-	// func3:0  // エラー (NoMethodFound)
-	// func3:1  // func3:2
-	// func3:2  // func3:2
-	// func3:3  // エラー (VersionMismatch)
-}
-
-
-include memo2.msgspec
-
-
-server MyApplication {
-	OptionalServiceExample scope1 default
-		// func1
-		// func2
-		// func1:scope1
-		// func2:scope1
-
-	ExceptionServiceExample scope2
-		// func1:scope2
-		// func2:scope2
-
-	VersionServiceExample scope3
-		// func1:scope3
-		// func2:scope3
-		// func3:scope3
-		// func1:scope3:1
-		// func2:scope3:1
-		// func3:scope3:1
-		// ...
-}
-
-
-// example1-impl.msgspec
 

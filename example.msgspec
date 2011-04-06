@@ -1,0 +1,57 @@
+namespace com.example
+namespace cpp example
+namespace ruby Example
+
+message BasicTypeExample {
+	1:  byte   f1
+	2:  short  f2
+	3:  int    f3
+	4:  long   f4
+	5:  ubyte  f5
+	6:  ushort f6
+	7:  uint   f7
+	8:  ulong  f8
+	9:  float  f9
+	10: double f10
+	11: bool   f11
+	12: raw    f12
+	13: string f13
+}
+
+message ContainerTypeExample {
+	1: list<string> f1
+	2: map<string,string> f2
+}
+
+message OptionalExample {
+	1: string f1           // required non-nullable
+	2: required string f2  // required non-nullable
+	3: optional string f3  // optional non-nullable
+	4: int f4              // required non-nullable
+	5: required int f5     // required non-nullable
+	6: optional int f6     // optional non-nullable
+}
+
+message NullableExample {
+	1: string? f1           // required nullable
+	2: required string? f2  // required nullable
+	3: optional string? f3  // optional nullable
+	4: int? f4              // required nullable
+	5: required int? f5     // required nullable
+	6: optional int? f6     // optional nullable
+}
+
+message EmptyExample {
+}
+
+
+exception SuperExceptionExample {
+	1: string message
+	2: int code
+}
+
+exception SubExceptionExample3 < SuperExceptionExample {
+	3: raw key
+}
+
+

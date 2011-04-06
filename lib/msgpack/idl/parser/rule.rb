@@ -1,5 +1,22 @@
-
-module MessageSpec
+#
+# MessagePack IDL Processor
+#
+# Copyright (C) 2011 FURUHASHI Sadayuki
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+#
+module MessagePack
+module IDL
 
 
 class ParsletParser < Parslet::Parser
@@ -29,7 +46,6 @@ class ParsletParser < Parslet::Parser
 		end
 	end
 
-
 	root :expression
 
 	rule(:expression) {
@@ -50,12 +66,12 @@ class ParsletParser < Parslet::Parser
 		namespace |
 		message |
 		enum |
-		exception |
-		const |
-		typedef |
-		typespec |
-		service |
-		server
+		exception
+		#const |
+		#typedef |
+		#typespec |
+		#service |
+		#application
 	}
 
 
@@ -69,7 +85,6 @@ class ParsletParser < Parslet::Parser
 
 	rule(:message) {
 		k_message >>
-			type_param_decl.maybe.as(:type_param_decl) >>
 			class_name.as(:message_name) >>
 			lt_extend_class.maybe.as(:super_class) >>
 		k_lwing >>
@@ -79,7 +94,6 @@ class ParsletParser < Parslet::Parser
 
 	rule(:exception) {
 		k_exception >>
-			type_param_decl.maybe.as(:type_param_decl) >>
 			class_name.as(:exception_name) >>
 			lt_extend_class.maybe.as(:super_class) >>
 		k_lwing >>
@@ -96,8 +110,8 @@ class ParsletParser < Parslet::Parser
 		field_id.as(:field_id) >>
 		field_modifier.maybe.as(:field_modifier) >>
 		field_type.as(:field_type) >>
-		field_name.as(:field_name) >>
-		eq_default_value.maybe.as(:field_default)
+		field_name.as(:field_name)
+		#eq_default_value.maybe.as(:field_default)
 	}
 
 	rule(:field_id) {
@@ -108,11 +122,8 @@ class ParsletParser < Parslet::Parser
 	}
 
 	rule(:field_modifier) {
-		k_optional | k_required
-	}
-
-	rule(:eq_default_value) {
-		k_equal >> literal
+		k_optional.as(:val_optional) |
+		k_required.as(:val_required)
 	}
 
 
@@ -133,115 +144,9 @@ class ParsletParser < Parslet::Parser
 	}
 
 
-	rule(:typedef) {
-		k_typedef >>
-			type_param_decl.maybe.as(:type_param_decl) >>
-			generic_type.as(:typedef_type) >>
-			generic_type.as(:typedef_name) >>
-		eol
+	rule(:eq_default_value) {
+		k_equal >> literal
 	}
-
-
-	rule(:const) {
-		k_const >>
-			field_type.as(:const_type) >>
-			const_name.as(:const_name) >>
-			k_equal >> literal.as(:const_value) >>
-		eol
-	}
-
-
-	rule(:typespec) {
-		k_typespec >>
-			type_param_decl.maybe.as(:type_param_decl) >>
-			lang_name.as(:typespec_lang) >> (
-				generic_type.as(:typespec_class) >> str('.') >> field_name.as(:typespec_field) |
-				generic_type.as(:typespec_type)
-			) >> lang_type.as(:typespec_spec) >> eol
-	}
-
-	rule(:lang_type) {
-		space? >> lang_type_lexer.as(:lang_type_tokens)
-	}
-
-	rule(:lang_type_lexer) {
-		(lang_type_word.as(:lang_type_token) | lang_type_separator.as(:lang_type_token)).repeat(1)
-	}
-
-	rule(:lang_type_word) {
-		match('[a-zA-Z0-9_\-]').repeat(1)
-	}
-
-	rule(:lang_type_separator) {
-		match('[\<\>\[\]\:\.\,]').repeat(1)
-	}
-
-
-	rule(:service) {
-		k_service >>
-			service_name.as(:service_name) >>
-			#type_param_decl.maybe.as(:type_param_decl) >>
-			lt_extend_class.maybe.as(:super_class) >>
-		k_lwing >>
-			service_description.as(:service_versions) >>
-		k_rwing
-	}
-
-	rule(:service_description) {
-		(func | version_label).repeat.as(:service_description)
-	}
-
-	rule(:version_label) {
-		# terminal
-		field_id
-	}
-
-	rule(:func) {
-		func_modifier.maybe.as(:func_modifier) >>
-		return_type.as(:return_type) >>
-		func_name.as(:func_name) >>
-		k_lparen >>
-			func_args.as(:func_args) >>
-		k_rparen >>
-		throws_classes.maybe.as(:func_throws) >>
-		eol
-	}
-
-	rule(:func_modifier) {
-		k_bang.as(:val_override) |
-		k_minus.as(:val_remove) |
-		k_plus.as(:val_add)
-	}
-
-	sequence :func_args_seq, :k_comma, :field_element
-
-	rule(:func_args) {
-		func_args_seq
-	}
-
-	sequence :throws_classes_seq, :k_comma, :generic_type, 1
-
-	rule(:throws_classes) {
-		k_throws >> throws_classes_seq
-	}
-
-
-
-	rule(:server) {
-		k_server >>
-			service_name.as(:server_name) >>
-		k_lwing >>
-			scope.repeat.as(:server_body) >>
-		k_rwing
-	}
-
-	rule(:scope) {
-		generic_type.as(:scope_type) >>
-		field_name.as(:scope_name) >>
-		k_default.maybe.as(:scope_default) >>
-		eol
-	}
-
 
 	rule(:lt_extend_class) {
 		k_lpoint >> generic_type
@@ -274,7 +179,9 @@ class ParsletParser < Parslet::Parser
 
 
 	rule(:literal) {
-		literal_nil | literal_bool | literal_int | literal_float | literal_str | literal_list | literal_map | literal_const
+		literal_nil | literal_bool | literal_int | literal_float |
+		literal_str | literal_list |
+		literal_map | literal_const
 	}
 
 	rule(:literal_nil) {
@@ -356,23 +263,11 @@ class ParsletParser < Parslet::Parser
 		(name >> ((str('.') | str('::')) >> name).repeat).as(:sequence)
 	}
 
-	rule(:const_name) {
-		name
-	}
-
 	rule(:class_name) {
 		name
 	}
 
-	rule(:service_name) {
-		class_name
-	}
-
 	rule(:field_name) {
-		name
-	}
-
-	rule(:func_name) {
 		name
 	}
 
@@ -428,9 +323,10 @@ class ParsletParser < Parslet::Parser
 	keyword('typedef')
 	keyword('typespec')
 	keyword('service')
-	keyword('server')
+	keyword('application')
 	keyword('optional')
 	keyword('required')
+	keyword('obsolete')
 	keyword('throws')
 	keyword('default')
 	keyword('nil')
@@ -438,7 +334,6 @@ class ParsletParser < Parslet::Parser
 	keyword('false')
 	keyword('void')
 
-	separator('*', :k_star)
 	separator('=', :k_equal)
 	separator('{', :k_lwing)
 	separator('}', :k_rwing)
@@ -451,9 +346,9 @@ class ParsletParser < Parslet::Parser
 	separator('>', :k_rpoint)
 	separator('[', :k_lbracket)
 	separator(']', :k_rbracket)
-	separator('!', :k_bang)
 	separator('-', :k_minus)
 	separator('+', :k_plus)
+	separator('!', :k_bang)
 	separator('?', :k_question)
 	separator('.', :k_dot)
 
@@ -471,7 +366,7 @@ class ParsletParser < Parslet::Parser
 		until last.children.empty?
 			last = last.children.last
 		end
-		last_cause = last.parslet.instance_eval('@last_cause')
+		last_cause = last.parslet.instance_eval('@last_cause')  # FIXME
 		source = last_cause.source
 
 		row, col = source.line_and_column(last_cause.pos)
@@ -531,4 +426,5 @@ class ParsletParser < Parslet::Parser
 end
 
 
+end
 end

@@ -1,37 +1,42 @@
+#
+# MessagePack IDL Processor
+#
+# Copyright (C) 2011 FURUHASHI Sadayuki
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+#
+module MessagePack
+module IDL
 
-module MessageSpec
 
+class Parser
+	include ProcessorModule
 
-class MessageSpecError < StandardError
-end
-
-class SyntaxError < MessageSpecError
-end
-
-class IncludeError < MessageSpecError
-end
-
-
-class Processor
 	require 'stringio'
 
 	def initialize(search_paths = [])
-		@parslet = ParsletParser.new
-		@visitor = Visitor.new
-		@evaluator = nil
 		@search_paths = search_paths
+		@parslet = ParsletParser.new
+		@transform = ParsletTransform.new
 		@ast = []
 	end
 
-	attr_reader :parslet
-	attr_reader :visitor
-	attr_reader :evaluator
 	attr_reader :ast
 
 	def parse(src, fname, dir)
 		begin
 			tree = @parslet.parse(src)
-			ast = @visitor.apply(tree)
+			ast = @transform.apply(tree)
 		rescue Parslet::ParseFailed => error
 			msg = @parslet.print_error(error, fname, StringIO.new).string
 			raise SyntaxError, msg
@@ -48,16 +53,6 @@ class Processor
 
 	def parse_file(path)
 		parse(File.read(path), File.basename(path), File.dirname(path))
-	end
-
-	def evaluate
-		@evaluator ||= Evaluator.new
-		@evaluator.evaluate(@ast)
-		self
-	end
-
-	def generate(specs, dir)
-		# real_type_table
 	end
 
 	protected
@@ -86,4 +81,4 @@ end
 
 
 end
-
+end
